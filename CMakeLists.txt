@@ -140,6 +140,7 @@ add_executable(BoutiqueTests
     Source/DSP/HydraMacroMapper.cpp
     Source/DSP/HydraParallelSaturator.cpp
     Source/DSP/HydraPhaseDisperser.cpp
+    Source/DSP/ZdfLadderFilter.cpp
 )
 
 target_include_directories(BoutiqueTests PRIVATE Source)

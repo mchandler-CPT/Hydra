@@ -30,21 +30,21 @@ float ZdfLadderFilter::processSample (float input, float cutoffHz, float resonan
     const auto denominator = 1.0f + (clampedResonance * h * h * h * h);
     const auto u = (compensatedInput - (clampedResonance * std::tanh (baseFeedback))) / denominator;
 
-    const auto v1 = (u - s1) * h;
-    const auto y1 = v1 + s1;
-    s1 = y1 + v1;
+    const auto v1 = std::tanh (u - s1);
+    const auto y1 = s1 + g * v1;
+    s1 = y1 + g * v1;
 
-    const auto v2 = (y1 - s2) * h;
-    const auto y2 = v2 + s2;
-    s2 = y2 + v2;
+    const auto v2 = std::tanh (y1 - s2);
+    const auto y2 = s2 + g * v2;
+    s2 = y2 + g * v2;
 
-    const auto v3 = (y2 - s3) * h;
-    const auto y3 = v3 + s3;
-    s3 = y3 + v3;
+    const auto v3 = std::tanh (y2 - s3);
+    const auto y3 = s3 + g * v3;
+    s3 = y3 + g * v3;
 
-    const auto v4 = (y3 - s4) * h;
-    const auto y4 = v4 + s4;
-    s4 = y4 + v4;
+    const auto v4 = std::tanh (y3 - s4);
+    const auto y4 = s4 + g * v4;
+    s4 = y4 + g * v4;
 
     lastOutput = y4;
     return y4;

@@ -6,6 +6,7 @@
 #include "DSP/HydraOscillator.h"
 #include "DSP/HydraParallelSaturator.h"
 #include "DSP/HydraPhaseDisperser.h"
+#include "DSP/ZdfLadderFilter.h"
 
 #include <cmath>
 #include <vector>
@@ -165,6 +166,32 @@ TEST_CASE ("HydraPhaseDisperser Energy Conservation", "[HydraPhaseDisperser]")
     REQUIRE ((outputRmsR / inputRmsR) == Catch::Approx (1.0f).margin (energyTolerance));
     REQUIRE ((outputPeakL / inputPeakL) == Catch::Approx (1.0f).margin (energyTolerance));
     REQUIRE ((outputPeakR / inputPeakR) == Catch::Approx (1.0f).margin (energyTolerance));
+}
+
+TEST_CASE ("ZdfLadderFilter Non-Linear Integration Stability", "[ZdfLadderFilter]")
+{
+    ZdfLadderFilter filter;
+    filter.reset();
+
+    constexpr int numFrames = 200'000;
+    auto peak = 0.0f;
+
+    for (int frame = 0; frame < numFrames; ++frame)
+    {
+        const auto sweepPhase = static_cast<float> (frame) / static_cast<float> (numFrames - 1);
+        const auto cutoffHz = 80.0f + sweepPhase * 12000.0f;
+        const auto resonance = 1.0f + sweepPhase * 3.0f;
+        const auto drive = std::sin (static_cast<float> (frame) * 0.013f) * 2.5f;
+
+        const auto output = filter.processSample (drive, cutoffHz, resonance, kSampleRate);
+
+        REQUIRE (std::isfinite (output));
+        REQUIRE (std::abs (output) < 8.0f);
+
+        peak = std::max (peak, std::abs (output));
+    }
+
+    REQUIRE (peak > 0.01f);
 }
 
 TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSaturator]")
