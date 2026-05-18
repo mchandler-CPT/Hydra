@@ -45,8 +45,8 @@ float sumSquaredAmplitudes (const HarmonicTargetPacket& packet)
 TEST_CASE ("HydraOscillator Waveshaping Integrity", "[HydraOscillator]")
 {
     HydraOscillator oscillator;
-    oscillator.setSampleRate (kSampleRate);
-    oscillator.setFrequency (440.0);
+    oscillator.prepare (kSampleRate);
+    oscillator.setFrequency (440.0, false);
 
     const auto theta = juce::MathConstants<double>::halfPi;
     oscillator.setPhase (theta);
@@ -83,6 +83,30 @@ TEST_CASE ("HydraOscillator Waveshaping Integrity", "[HydraOscillator]")
 
     const auto expectedIncrement = kTwoPi * 440.0 / kSampleRate;
     REQUIRE (oscillator.getPhaseIncrement() == Catch::Approx (expectedIncrement).margin (1.0e-9));
+}
+
+TEST_CASE ("HydraOscillator legato preserves phase continuity", "[HydraOscillator]")
+{
+    HydraOscillator oscillator;
+    oscillator.prepare (kSampleRate);
+    oscillator.setFrequency (440.0, false);
+    oscillator.setPhase (1.25);
+
+    const auto phaseBeforeLegato = oscillator.getCurrentPhase();
+
+    for (int frame = 0; frame < 512; ++frame)
+        oscillator.advance();
+
+    oscillator.setFrequency (523.25, true);
+
+    for (int frame = 0; frame < 512; ++frame)
+        oscillator.advance();
+
+    REQUIRE (oscillator.getCurrentPhase() >= 0.0);
+    REQUIRE (oscillator.getCurrentPhase() < kTwoPi);
+    REQUIRE (oscillator.getCurrentPhase() != Catch::Approx (phaseBeforeLegato).margin (1.0e-9));
+    REQUIRE (oscillator.getCurrentPhase() != Catch::Approx (0.0).margin (1.0e-9));
+    REQUIRE (oscillator.getPhaseIncrement() == Catch::Approx (kTwoPi * 523.25 / kSampleRate).margin (1.0e-4));
 }
 
 TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")

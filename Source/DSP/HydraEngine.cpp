@@ -18,7 +18,7 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
         auto& oscillator = oscillators[static_cast<size_t> (partialIndex)];
         auto& voice = voices[static_cast<size_t> (partialIndex)];
 
-        oscillator.setSampleRate (sampleRate);
+        oscillator.prepare (sampleRate);
 
         voice.amplitude.reset (sampleRate, smoothingSeconds);
         voice.morph.reset (sampleRate, smoothingSeconds);
@@ -48,7 +48,10 @@ void HydraEngine::reset() noexcept
     }
 
     for (auto& oscillator : oscillators)
+    {
         oscillator.setPhase (0.0);
+        oscillator.setFrequency (0.0, false);
+    }
 }
 
 void HydraEngine::applyMacroTargets() noexcept
@@ -70,6 +73,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
 {
     const auto fundamentalHz = midiNoteToFrequency (midiNoteNumber);
     const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
+    const auto isLegatoTransition = (voiceAmplitude > 0.0f);
 
     noteVelocity = clampedVelocity;
     voiceAmplitude = clampedVelocity;
@@ -80,9 +84,17 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     {
         const auto index = static_cast<size_t> (partialIndex);
         const auto harmonic = static_cast<double> (partialIndex + 1);
+        const auto harmonicFrequency = fundamentalHz * harmonic;
 
-        oscillators[index].setFrequency (fundamentalHz * harmonic);
-        oscillators[index].setPhase (twoPi / static_cast<double> (primeNumbers[index]));
+        if (isLegatoTransition)
+        {
+            oscillators[index].setFrequency (harmonicFrequency, true);
+        }
+        else
+        {
+            oscillators[index].setPhase (twoPi / static_cast<double> (primeNumbers[index]));
+            oscillators[index].setFrequency (harmonicFrequency, false);
+        }
     }
 
     applyMacroTargets();

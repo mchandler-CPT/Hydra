@@ -6,16 +6,23 @@ namespace
 {
 constexpr float kMorphMin = 0.0f;
 constexpr float kMorphMax = 3.0f;
+constexpr double kPhaseIncrementSmoothingSeconds = 0.003;
 } // namespace
 
-void HydraOscillator::setSampleRate (double newSampleRate) noexcept
+void HydraOscillator::prepare (double newSampleRate) noexcept
 {
     sampleRate = newSampleRate;
+    phaseIncrement.reset (sampleRate, kPhaseIncrementSmoothingSeconds);
 }
 
-void HydraOscillator::setFrequency (double frequencyHz) noexcept
+void HydraOscillator::setFrequency (double frequencyHz, bool glidePitch) noexcept
 {
-    phaseIncrement = twoPi * frequencyHz / sampleRate;
+    const auto targetIncrement = (twoPi * frequencyHz) / sampleRate;
+
+    if (glidePitch)
+        phaseIncrement.setTargetValue (targetIncrement);
+    else
+        phaseIncrement.setCurrentAndTargetValue (targetIncrement);
 }
 
 void HydraOscillator::setPhase (double initialPhase) noexcept
@@ -25,7 +32,7 @@ void HydraOscillator::setPhase (double initialPhase) noexcept
 
 void HydraOscillator::advance() noexcept
 {
-    currentPhase += phaseIncrement;
+    currentPhase += phaseIncrement.getNextValue();
 
     if (currentPhase >= twoPi)
         currentPhase -= twoPi;
