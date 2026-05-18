@@ -87,6 +87,8 @@ target_sources(Hydra PRIVATE
     Source/PluginProcessor.h
     Source/PluginEditor.cpp
     Source/PluginEditor.h
+    Source/UI/BoutiqueLookAndFeel.h
+    Source/UI/BoutiqueLookAndFeel.cpp
     
     Source/DSP/HydraEngine.h
     Source/DSP/HydraEngine.cpp
@@ -96,7 +98,7 @@ target_sources(Hydra PRIVATE
     Source/DSP/HydraMacroMapper.cpp
 ) 
 
-target_include_directories(Hydra PRIVATE Source)
+target_include_directories(Hydra PRIVATE Source Source/UI)
 
 # Link your dependencies (Keeping juce_dsp active for instant access to filters/saturation)
 target_link_libraries(Hydra PRIVATE

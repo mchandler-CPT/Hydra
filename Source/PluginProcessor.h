@@ -38,6 +38,9 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState& getApvts() { return apvts; }
+    juce::MidiKeyboardState& getKeyboardState() { return keyboardState; }
+
+    juce::MidiKeyboardState keyboardState;
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();

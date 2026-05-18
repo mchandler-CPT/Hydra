@@ -13,7 +13,11 @@
   - **State serialization:** `getStateInformation` / `setStateInformation` using `apvts` XML binary helpers for DAW preset recall.
   - **Mono-right scratch buffer:** `monoRightScratch` allocated in `prepareToPlay`; mono buses render L/R internally then downmix without heap allocation on the audio thread.
 - **Build & Verification:** Project compiles cleanly (Release). Catch2 suite (`BoutiqueTests`) passes all test cases — oscillator integrity, RSS energy conservation, and engine voice lifecycle.
-- **Next Immediate Milestone:** Front-panel UI construction in `PluginEditor` — sliders/knobs bound to `getApvts()` for `depth`, `girth`, `morph`, and `gain`.
+- **Front-Panel UI — 100% Complete:**
+  - `BoutiqueLookAndFeel` custom rotary skin (`Source/UI/`).
+  - `PluginEditor` 500×250 four-column console: DEPTH | GIRTH | MORPH | GAIN with APVTS `SliderAttachment` wiring.
+  - LookAndFeel nullified in destructor per host-safety rule.
+- **Next Immediate Milestone:** End-to-end DAW validation (Standalone/VST3) and visual polish pass.
 
 ## Technical Decisions Ledger
 1. **Separation of Framework:** `HydraEngine` accepts pure primitive floats to completely avoid coupling with JUCE APVTS classes.

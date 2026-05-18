@@ -86,6 +86,8 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     hydraEngine.setGirth (girth);
     hydraEngine.setMorph (morph);
 
+    keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
+
     for (const auto metadata : midiMessages)
     {
         const auto message = metadata.getMessage();
