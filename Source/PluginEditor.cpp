@@ -8,6 +8,10 @@ constexpr int kEditorHeight = 320;
 constexpr int kKeyboardHeight = 70;
 constexpr int kColumnWidth = 125;
 constexpr int kLabelBandHeight = 24;
+constexpr int kCutoffTextBoxBandHeight = 20;
+constexpr int kCutoffTextBoxWidth = 70;
+constexpr int kCutoffTextBoxHeight = 18;
+constexpr int kCutoffColumnBottomInset = 22;
 constexpr int kCutoffColumnX = 250;
 constexpr int kGainColumnX = 375;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
@@ -26,6 +30,15 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
 
     configureSlider (filterCutoffSlider, "FILTER CUTOFF", filterCutoffLabel);
     configureSlider (gainSlider, "MASTER GAIN", gainLabel);
+
+    filterCutoffSlider.setTextBoxStyle (juce::Slider::TextBoxBelow,
+                                        true,
+                                        kCutoffTextBoxWidth,
+                                        kCutoffTextBoxHeight);
+    filterCutoffSlider.setTextValueSuffix (" Hz");
+    filterCutoffSlider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
+    filterCutoffSlider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    filterCutoffSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
 
     filterCutoffLabel.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::bold }));
     filterCutoffLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
@@ -88,6 +101,12 @@ void HydraAudioProcessorEditor::resized()
         slider.setBounds (column);
     };
 
-    placeColumnAtX (kCutoffColumnX, filterCutoffSlider, filterCutoffLabel);
+    {
+        auto cutoffColumn = controlPanel.withX (kCutoffColumnX).withWidth (kColumnWidth);
+        filterCutoffLabel.setBounds (cutoffColumn.removeFromTop (kLabelBandHeight));
+        cutoffColumn.removeFromBottom (kCutoffColumnBottomInset);
+        filterCutoffSlider.setBounds (cutoffColumn);
+    }
+
     placeColumnAtX (kGainColumnX, gainSlider, gainLabel);
 }

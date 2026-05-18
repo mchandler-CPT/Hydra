@@ -12,6 +12,8 @@ constexpr const char* kResParamId = "res";
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
 {
+    juce::NormalisableRange<float> cutoffRange (20.0f, 20000.0f, 0.0f, 0.2f);
+
     return {
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kDepthParamId, 1 },
                                                      "Intelligent Depth",
@@ -27,7 +29,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
                                                      0.5f),
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kCutoffParamId, 1 },
                                                      "Filter Cutoff",
-                                                     juce::NormalisableRange<float> { 20.0f, 20000.0f, 0.25f },
+                                                     cutoffRange,
                                                      20000.0f),
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kResParamId, 1 },
                                                      "Resonance",

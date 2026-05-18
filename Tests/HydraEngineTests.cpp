@@ -204,6 +204,31 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     const auto clipped = saturator.processSample (highOnlyLeft, highOnlyRight);
     REQUIRE (clipped.first == Catch::Approx (0.7f).margin (1.0e-5f));
     REQUIRE (clipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
+
+    std::array<float, HydraParallelSaturator::numPartials> highOnlyNegativeLeft {};
+    std::array<float, HydraParallelSaturator::numPartials> highOnlyNegativeRight {};
+    highOnlyNegativeLeft[5] = -2.0f;
+    highOnlyNegativeLeft[6] = -2.0f;
+
+    const auto negativeClipped = saturator.processSample (highOnlyNegativeLeft, highOnlyNegativeRight);
+    REQUIRE (negativeClipped.first == Catch::Approx (-0.58f).margin (1.0e-5f));
+    REQUIRE (negativeClipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
+
+    SECTION ("Symmetry break proves even-harmonic MGTR asymmetry")
+    {
+        constexpr float kDrive = 0.5f;
+
+        std::array<float, HydraParallelSaturator::numPartials> positiveDrive {};
+        std::array<float, HydraParallelSaturator::numPartials> negativeDrive {};
+        positiveDrive.fill (kDrive);
+        negativeDrive.fill (-kDrive);
+
+        const auto positiveOutput = saturator.processSample (positiveDrive, zeroRight);
+        const auto negativeOutput = saturator.processSample (negativeDrive, zeroRight);
+
+        REQUIRE (positiveOutput.first != Catch::Approx (-negativeOutput.first).margin (1.0e-6f));
+        REQUIRE (std::abs (positiveOutput.first + negativeOutput.first) > 1.0e-4f);
+    }
 }
 
 TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
