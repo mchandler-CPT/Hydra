@@ -13,6 +13,8 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
 
     constexpr double smoothingSeconds = 0.01;
 
+    phaseDisperser.prepare (sampleRate);
+
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
         auto& oscillator = oscillators[static_cast<size_t> (partialIndex)];
@@ -30,17 +32,6 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
         voice.panL.setCurrentAndTargetValue (1.0f);
         voice.panR.setCurrentAndTargetValue (0.0f);
     }
-
-    resetAllPassChains();
-}
-
-void HydraEngine::resetAllPassChains() noexcept
-{
-    for (auto& stage : allPassChainL)
-        stage.reset();
-
-    for (auto& stage : allPassChainR)
-        stage.reset();
 }
 
 void HydraEngine::reset() noexcept
@@ -49,6 +40,8 @@ void HydraEngine::reset() noexcept
     isKeyHeld = false;
     noteVelocity = 0.0f;
     voiceAmplitude = 0.0f;
+
+    phaseDisperser.reset();
 
     for (auto& voice : voices)
     {
@@ -63,8 +56,6 @@ void HydraEngine::reset() noexcept
         oscillator.setPhase (0.0);
         oscillator.setFrequency (0.0, false);
     }
-
-    resetAllPassChains();
 }
 
 void HydraEngine::applyMacroTargets() noexcept
@@ -140,8 +131,6 @@ void HydraEngine::setGirth (float newGirth) noexcept
 
 void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept
 {
-    static constexpr std::array<float, 4> allPassCoefficients { 0.42f, -0.15f, 0.68f, -0.33f };
-
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {
         if (! isKeyHeld)
@@ -159,12 +148,8 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             continue;
         }
 
-        auto lowBandL = 0.0f;
-        auto lowBandR = 0.0f;
-        auto midBandL = 0.0f;
-        auto midBandR = 0.0f;
-        auto highBandL = 0.0f;
-        auto highBandR = 0.0f;
+        std::array<float, HydraParallelSaturator::numPartials> partialSamplesLeft {};
+        std::array<float, HydraParallelSaturator::numPartials> partialSamplesRight {};
 
         for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
         {
@@ -178,49 +163,19 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             const auto panR = voice.panR.getNextValue();
 
             const auto partialSample = oscillator.evaluateSample (morph) * amplitude;
-            const auto partialLeft = partialSample * panL;
-            const auto partialRight = partialSample * panR;
-
-            if (partialIndex < 2)
-            {
-                lowBandL += partialLeft;
-                lowBandR += partialRight;
-            }
-            else if (partialIndex < 5)
-            {
-                midBandL += partialLeft;
-                midBandR += partialRight;
-            }
-            else
-            {
-                highBandL += partialLeft;
-                highBandR += partialRight;
-            }
+            partialSamplesLeft[index] = partialSample * panL;
+            partialSamplesRight[index] = partialSample * panR;
 
             oscillator.advance();
         }
 
-        lowBandL -= (lowBandL * lowBandL * lowBandL / 3.0f);
-        lowBandR -= (lowBandR * lowBandR * lowBandR / 3.0f);
+        const auto saturated = saturator.processSample (partialSamplesLeft, partialSamplesRight);
 
-        midBandL = std::tanh (midBandL * 1.4f);
-        midBandR = std::tanh (midBandR * 1.4f);
-
-        highBandL = juce::jlimit (-0.7f, 0.7f, highBandL);
-        highBandR = juce::jlimit (-0.7f, 0.7f, highBandR);
-
-        auto mixedSampleL = (lowBandL + midBandL + highBandL) * voiceAmplitude;
-        auto mixedSampleR = (lowBandR + midBandR + highBandR) * voiceAmplitude;
-
-        for (size_t stage = 0; stage < allPassChainL.size(); ++stage)
-        {
-            mixedSampleL = allPassChainL[stage].processSample (mixedSampleL, allPassCoefficients[stage]);
-            mixedSampleR = allPassChainR[stage].processSample (mixedSampleR, allPassCoefficients[stage]);
-        }
-
-        leftChannel[sampleIndex] = mixedSampleL;
-        rightChannel[sampleIndex] = mixedSampleR;
+        leftChannel[sampleIndex] = saturated.first * voiceAmplitude;
+        rightChannel[sampleIndex] = saturated.second * voiceAmplitude;
     }
+
+    phaseDisperser.processBlock (leftChannel, rightChannel, numSamples);
 
     if (voiceAmplitude == 0.0f)
     {
@@ -230,6 +185,6 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         for (auto& voice : voices)
             voice.amplitude.setCurrentAndTargetValue (0.0f);
 
-        resetAllPassChains();
+        phaseDisperser.reset();
     }
 }

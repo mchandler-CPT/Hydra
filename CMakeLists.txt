@@ -98,6 +98,10 @@ target_sources(Hydra PRIVATE
     Source/DSP/HydraOscillator.cpp
     Source/DSP/HydraMacroMapper.h
     Source/DSP/HydraMacroMapper.cpp
+    Source/DSP/HydraParallelSaturator.h
+    Source/DSP/HydraParallelSaturator.cpp
+    Source/DSP/HydraPhaseDisperser.h
+    Source/DSP/HydraPhaseDisperser.cpp
     Source/DSP/ZdfLadderFilter.h
     Source/DSP/ZdfLadderFilter.cpp
 ) 
@@ -134,6 +138,8 @@ add_executable(BoutiqueTests
     Source/DSP/HydraEngine.cpp
     Source/DSP/HydraOscillator.cpp
     Source/DSP/HydraMacroMapper.cpp
+    Source/DSP/HydraParallelSaturator.cpp
+    Source/DSP/HydraPhaseDisperser.cpp
 )
 
 target_include_directories(BoutiqueTests PRIVATE Source)

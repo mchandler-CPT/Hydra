@@ -4,6 +4,8 @@
 #include "DSP/HydraEngine.h"
 #include "DSP/HydraMacroMapper.h"
 #include "DSP/HydraOscillator.h"
+#include "DSP/HydraParallelSaturator.h"
+#include "DSP/HydraPhaseDisperser.h"
 
 #include <cmath>
 #include <vector>
@@ -39,6 +41,25 @@ float sumSquaredAmplitudes (const HarmonicTargetPacket& packet)
     for (const auto amplitude : packet.amplitudes)
         energy += amplitude * amplitude;
     return energy;
+}
+
+float computeRms (const std::vector<float>& buffer, int startIndex, int numSamples)
+{
+    double sumSquares = 0.0;
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const auto sample = static_cast<double> (buffer[static_cast<size_t> (startIndex + i)]);
+        sumSquares += sample * sample;
+    }
+    return static_cast<float> (std::sqrt (sumSquares / static_cast<double> (numSamples)));
+}
+
+float computePeak (const std::vector<float>& buffer, int startIndex, int numSamples)
+{
+    auto peak = 0.0f;
+    for (int i = 0; i < numSamples; ++i)
+        peak = std::max (peak, std::abs (buffer[static_cast<size_t> (startIndex + i)]));
+    return peak;
 }
 } // namespace
 
@@ -107,6 +128,82 @@ TEST_CASE ("HydraOscillator legato preserves phase continuity", "[HydraOscillato
     REQUIRE (oscillator.getCurrentPhase() != Catch::Approx (phaseBeforeLegato).margin (1.0e-9));
     REQUIRE (oscillator.getCurrentPhase() != Catch::Approx (0.0).margin (1.0e-9));
     REQUIRE (oscillator.getPhaseIncrement() == Catch::Approx (kTwoPi * 523.25 / kSampleRate).margin (1.0e-4));
+}
+
+TEST_CASE ("HydraPhaseDisperser Energy Conservation", "[HydraPhaseDisperser]")
+{
+    HydraPhaseDisperser disperser;
+    disperser.prepare (kSampleRate);
+
+    constexpr int totalSamples = 1000;
+    constexpr int settleSamples = 128;
+    std::vector<float> left (static_cast<size_t> (totalSamples), 0.0f);
+    std::vector<float> right (static_cast<size_t> (totalSamples), 0.0f);
+
+    for (int i = 0; i < totalSamples; ++i)
+    {
+        const auto phase = static_cast<float> (i) * 0.13f;
+        left[static_cast<size_t> (i)] = std::sin (phase);
+        right[static_cast<size_t> (i)] = std::cos (phase * 0.97f);
+    }
+
+    const auto inputRmsL = computeRms (left, settleSamples, totalSamples - settleSamples);
+    const auto inputRmsR = computeRms (right, settleSamples, totalSamples - settleSamples);
+    const auto inputPeakL = computePeak (left, settleSamples, totalSamples - settleSamples);
+    const auto inputPeakR = computePeak (right, settleSamples, totalSamples - settleSamples);
+
+    disperser.processBlock (left.data(), right.data(), totalSamples);
+
+    const auto outputRmsL = computeRms (left, settleSamples, totalSamples - settleSamples);
+    const auto outputRmsR = computeRms (right, settleSamples, totalSamples - settleSamples);
+    const auto outputPeakL = computePeak (left, settleSamples, totalSamples - settleSamples);
+    const auto outputPeakR = computePeak (right, settleSamples, totalSamples - settleSamples);
+
+    constexpr float energyTolerance = 0.002f;
+
+    REQUIRE ((outputRmsL / inputRmsL) == Catch::Approx (1.0f).margin (energyTolerance));
+    REQUIRE ((outputRmsR / inputRmsR) == Catch::Approx (1.0f).margin (energyTolerance));
+    REQUIRE ((outputPeakL / inputPeakL) == Catch::Approx (1.0f).margin (energyTolerance));
+    REQUIRE ((outputPeakR / inputPeakR) == Catch::Approx (1.0f).margin (energyTolerance));
+}
+
+TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSaturator]")
+{
+    HydraParallelSaturator saturator;
+
+    std::array<float, HydraParallelSaturator::numPartials> zeroLeft {};
+    std::array<float, HydraParallelSaturator::numPartials> zeroRight {};
+
+    const auto silent = saturator.processSample (zeroLeft, zeroRight);
+    REQUIRE (silent.first == Catch::Approx (0.0f).margin (1.0e-6f));
+    REQUIRE (silent.second == Catch::Approx (0.0f).margin (1.0e-6f));
+
+    std::array<float, HydraParallelSaturator::numPartials> extremeLeft {};
+    std::array<float, HydraParallelSaturator::numPartials> extremeRight {};
+    extremeLeft[2] = 100.0f;
+    extremeLeft[3] = -80.0f;
+    extremeLeft[4] = 60.0f;
+    extremeRight[2] = 100.0f;
+    extremeRight[3] = -80.0f;
+    extremeRight[4] = 60.0f;
+
+    const auto midSumL = extremeLeft[2] + extremeLeft[3] + extremeLeft[4];
+    const auto expectedMidL = std::tanh (midSumL * 1.4f);
+    const auto driven = saturator.processSample (extremeLeft, extremeRight);
+
+    REQUIRE (driven.first == Catch::Approx (expectedMidL).margin (1.0e-5f));
+    REQUIRE (driven.second == Catch::Approx (expectedMidL).margin (1.0e-5f));
+    REQUIRE (std::abs (driven.first) <= 1.0f);
+    REQUIRE (std::abs (driven.second) <= 1.0f);
+
+    std::array<float, HydraParallelSaturator::numPartials> highOnlyLeft {};
+    std::array<float, HydraParallelSaturator::numPartials> highOnlyRight {};
+    highOnlyLeft[5] = 2.0f;
+    highOnlyLeft[6] = 2.0f;
+
+    const auto clipped = saturator.processSample (highOnlyLeft, highOnlyRight);
+    REQUIRE (clipped.first == Catch::Approx (0.7f).margin (1.0e-5f));
+    REQUIRE (clipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
 }
 
 TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
