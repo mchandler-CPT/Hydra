@@ -15,6 +15,10 @@ struct HydraHead
 
 class HydraEngine
 {
+#ifdef HYDRA_TEST_ACCESS
+    friend struct HydraEngineTestAccess;
+#endif
+
 public:
     static constexpr int numPartials = 7;
 
@@ -41,3 +45,23 @@ private:
     double sampleRate = 44100.0;
     std::array<HydraHead, numPartials> heads {};
 };
+
+#ifdef HYDRA_TEST_ACCESS
+struct HydraEngineTestAccess
+{
+    static const HydraHead& getHead (const HydraEngine& engine, int index)
+    {
+        return engine.heads[static_cast<size_t> (index)];
+    }
+
+    static float evaluatePartialAt (double theta, float morph)
+    {
+        return HydraEngine::evaluatePartial (theta, morph);
+    }
+
+    static double midiNoteToHz (int midiNoteNumber)
+    {
+        return HydraEngine::midiNoteToFrequency (midiNoteNumber);
+    }
+};
+#endif

@@ -119,7 +119,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(BoutiqueTests
-    Tests/PluginTests.cpp # Your basic clean target test file
+    Tests/PluginTests.cpp
+    Tests/HydraEngineTests.cpp
+    Source/DSP/HydraEngine.cpp
 )
 
 target_include_directories(BoutiqueTests PRIVATE Source)
@@ -130,6 +132,8 @@ target_link_libraries(BoutiqueTests PRIVATE
     juce::juce_audio_basics
     juce::juce_dsp
 )
+
+target_compile_definitions(BoutiqueTests PRIVATE HYDRA_TEST_ACCESS)
 
 target_compile_features(BoutiqueTests PRIVATE cxx_std_20)
 

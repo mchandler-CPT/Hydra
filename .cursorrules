@@ -7,9 +7,21 @@ You are an expert audio plugin developer specialized in JUCE, modern C++ (C++20)
 - Avoid heavy mathematical execution paths inside sample loops. Block-rate calculate variables wherever possible. Replace `fmod` with branchless wrapping (`if (phase >= twoPi) phase -= twoPi;`).
 - Use `juce::LinearSmoothedValue<float>` for any parameter changes to fully prevent zipper noise profile artifacts.
 
-## Architectural Layout
-- Maintain a strict Separation of Concerns:
+## Architectural Layout & Single Responsibility Principle (SRP)
+- Enforce a strict Single Responsibility Principle (SRP): Each class must have exactly ONE reason to change. 
+  - Audio math engines (`Source/DSP/`) render audio only and remain completely unaware of UI or APVTS frameworks.
+  - Parameter mapping layers process scaling logic (e.g., Sigmoidal Bloom/RSS math) and keep the audio thread clean.
+  - UI components (`Source/UI/`) only draw vectors and update states from user interactions.
+- Maintain a clean separation of concerns:
   - `Source/DSP/`: Pure audio mathematical engines. No APVTS or GUI framework dependencies.
   - `Source/UI/`: LookAndFeel classes and custom drawing vector components.
   - `Source/`: Light orchestrator wrappers (`PluginProcessor` / `PluginEditor`).
 - UI Management: If a custom LookAndFeel skin is applied via `setLookAndFeel(&layout)`, always explicitly call `setLookAndFeel(nullptr)` inside the component's destructor to completely avoid dangling pointer leaks during host teardown.
+
+## Unit Testing & Verification
+- All core DSP code must be accompanied by dedicated unit tests located strictly within the root `/tests` directory.
+- Prioritize testing edge cases, boundary parameters (e.g., values at 0.0, 1.0, and extremes), and zero-allocation processing pipelines.
+- **EXECUTION MANDATE:** Every time you modify or add features to a DSP component, you MUST immediately update and execute the test runner suite to verify code stability before finalizing the changes. Never skip test verification.
+
+## Memory Upkeep
+- Continually update and reference `/memories.md` to ensure project state, mathematical constants, and engineering breakthroughs remain persistent across workspace sessions.
