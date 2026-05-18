@@ -14,6 +14,26 @@ struct HydraPartialVoice
     juce::LinearSmoothedValue<float> panR;
 };
 
+struct AllPassFilter
+{
+    float x1 { 0.0f };
+    float y1 { 0.0f };
+
+    void reset() noexcept
+    {
+        x1 = 0.0f;
+        y1 = 0.0f;
+    }
+
+    float processSample (float input, float coefficient) noexcept
+    {
+        const auto output = (-coefficient * input) + x1 + (coefficient * y1);
+        x1 = input;
+        y1 = output;
+        return output;
+    }
+};
+
 class HydraEngine
 {
 public:
@@ -39,6 +59,7 @@ private:
 
     static double midiNoteToFrequency (int midiNoteNumber) noexcept;
     void applyMacroTargets() noexcept;
+    void resetAllPassChains() noexcept;
 
     double sampleRate = 44100.0;
     float depth = 0.0f;
@@ -51,4 +72,6 @@ private:
     HydraMacroMapper macroMapper;
     std::array<HydraOscillator, numPartials> oscillators {};
     std::array<HydraPartialVoice, numPartials> voices {};
+    std::array<AllPassFilter, 4> allPassChainL {};
+    std::array<AllPassFilter, 4> allPassChainR {};
 };
