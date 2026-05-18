@@ -2,6 +2,7 @@
 
 #include "BoutiqueLookAndFeel.h"
 #include "PluginProcessor.h"
+#include "UI/XyExplorer.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -24,18 +25,14 @@ private:
     HydraAudioProcessor& audioProcessor;
     BoutiqueLookAndFeel customLookAndFeel;
 
-    juce::Slider depthSlider;
-    juce::Slider girthSlider;
+    XyExplorer xyExplorer;
+
     juce::Slider morphSlider;
     juce::Slider gainSlider;
 
-    juce::Label depthLabel;
-    juce::Label girthLabel;
     juce::Label morphLabel;
     juce::Label gainLabel;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> depthAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> girthAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 

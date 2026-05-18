@@ -8,6 +8,8 @@ constexpr int kEditorHeight = 320;
 constexpr int kKeyboardHeight = 70;
 constexpr int kColumnWidth = 125;
 constexpr int kLabelBandHeight = 24;
+constexpr int kMorphColumnX = 250;
+constexpr int kGainColumnX = 375;
 } // namespace
 
 HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& processor)
@@ -19,15 +21,17 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     setSize (kEditorWidth, kEditorHeight);
 
     addAndMakeVisible (keyboardComponent);
+    addAndMakeVisible (xyExplorer);
 
-    configureSlider (depthSlider, "INTELLIGENT DEPTH", depthLabel);
-    configureSlider (girthSlider, "SPATIAL GIRTH", girthLabel);
     configureSlider (morphSlider, "WAVE MORPH", morphLabel);
     configureSlider (gainSlider, "MASTER GAIN", gainLabel);
 
     auto& apvts = audioProcessor.getApvts();
-    depthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "depth", depthSlider);
-    girthAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "girth", girthSlider);
+
+    if (auto* depthParam = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter ("depth")))
+        if (auto* girthParam = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter ("girth")))
+            xyExplorer.setParameters (*depthParam, *girthParam);
+
     morphAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "morph", morphSlider);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "gain", gainSlider);
 }
@@ -66,19 +70,20 @@ void HydraAudioProcessorEditor::paint (juce::Graphics& g)
 void HydraAudioProcessorEditor::resized()
 {
     keyboardComponent.setBounds (0, kControlPanelHeight, kEditorWidth, kKeyboardHeight);
+    xyExplorer.setBounds (15, 15, 220, 220);
 
     auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
 
-    const auto placeColumn = [&controlPanel] (int columnIndex, juce::Slider& slider, juce::Label& label)
+    const auto placeColumnAtX = [&controlPanel] (int x,
+                                                 juce::Slider& slider,
+                                                 juce::Label& label)
     {
-        auto column = controlPanel.withX (columnIndex * kColumnWidth).withWidth (kColumnWidth);
+        auto column = controlPanel.withX (x).withWidth (kColumnWidth);
 
         label.setBounds (column.removeFromTop (kLabelBandHeight));
         slider.setBounds (column);
     };
 
-    placeColumn (0, depthSlider, depthLabel);
-    placeColumn (1, girthSlider, girthLabel);
-    placeColumn (2, morphSlider, morphLabel);
-    placeColumn (3, gainSlider, gainLabel);
+    placeColumnAtX (kMorphColumnX, morphSlider, morphLabel);
+    placeColumnAtX (kGainColumnX, gainSlider, gainLabel);
 }

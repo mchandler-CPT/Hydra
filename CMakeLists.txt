@@ -89,6 +89,8 @@ target_sources(Hydra PRIVATE
     Source/PluginEditor.h
     Source/UI/BoutiqueLookAndFeel.h
     Source/UI/BoutiqueLookAndFeel.cpp
+    Source/UI/XyExplorer.h
+    Source/UI/XyExplorer.cpp
     
     Source/DSP/HydraEngine.h
     Source/DSP/HydraEngine.cpp
