@@ -17,16 +17,33 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth)
     HarmonicTargetPacket packet;
     std::array<float, numPartials> rawAmplitudes {};
 
+    const auto thetaG = effectiveGirth * 0.08f;
+
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
         const auto index = static_cast<size_t> (partialIndex);
-        const auto harmonicWeight = static_cast<float> (partialIndex) / static_cast<float> (numPartials - 1);
 
         rawAmplitudes[index] = 1.0f / (1.0f + std::exp (-alpha[index] * (X - beta[index])));
 
-        const auto panPosition = 0.5f + (harmonicWeight - 0.5f) * effectiveGirth;
-        const auto panAngle = panPosition * juce::MathConstants<float>::halfPi;
-        packet.panningPairs[index] = { std::cos (panAngle), std::sin (panAngle) };
+        if (partialIndex == 0)
+        {
+            constexpr auto centerGain = juce::MathConstants<float>::sqrt2 * 0.5f;
+            packet.panningPairs[index] = { centerGain, centerGain };
+        }
+        else
+        {
+            const auto harmonicIndex = partialIndex + 1;
+            const auto sign = (harmonicIndex % 2 == 0) ? -1.0f : 1.0f;
+            const auto angle = (static_cast<float> (harmonicIndex - 1) * juce::MathConstants<float>::pi / 12.0f) + thetaG;
+            const auto panOffset = effectiveGirth * sign * std::sin (angle);
+            const auto clampedPan = juce::jlimit (-1.0f, 1.0f, panOffset);
+            const auto normalizedPan = (clampedPan + 1.0f) * 0.5f;
+
+            packet.panningPairs[index].first =
+                std::cos (normalizedPan * juce::MathConstants<float>::pi * 0.5f);
+            packet.panningPairs[index].second =
+                std::sin (normalizedPan * juce::MathConstants<float>::pi * 0.5f);
+        }
 
         const auto targetMorph = (effectiveGirth * 2.0f)
                                + (effectiveGirth * 1.0f * (static_cast<float> (partialIndex) / 6.0f));

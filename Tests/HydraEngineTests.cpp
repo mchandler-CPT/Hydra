@@ -257,9 +257,41 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         REQUIRE (packet.amplitudes[0] > packet.amplitudes[1]);
         REQUIRE (packet.amplitudes[0] > packet.amplitudes[6]);
         REQUIRE (packet.amplitudes[6] == Catch::Approx (0.0f).margin (0.05f));
+    }
 
-        for (const auto& [panL, panR] : packet.panningPairs)
-            REQUIRE ((panL * panL + panR * panR) == Catch::Approx (1.0f).margin (1.0e-5f));
+    SECTION ("Hyperbolic panning anchors fundamental and conserves equal power")
+    {
+        const std::array<std::pair<float, float>, 3> girthVariations {
+            std::pair<float, float> { 1.0f, 0.0f },
+            { 1.0f, 0.5f },
+            { 1.0f, 1.0f }
+        };
+
+        for (const auto [depth, girth] : girthVariations)
+        {
+            const auto packet = mapper.computeTargets (depth, girth);
+
+            REQUIRE (packet.panningPairs[0].first == Catch::Approx (packet.panningPairs[0].second).margin (1.0e-5f));
+            REQUIRE (packet.panningPairs[0].first
+                     == Catch::Approx (juce::MathConstants<float>::sqrt2 * 0.5f).margin (1.0e-5f));
+
+            for (const auto& [panL, panR] : packet.panningPairs)
+                REQUIRE ((panL * panL + panR * panR) == Catch::Approx (1.0f).margin (1.0e-5f));
+        }
+    }
+
+    SECTION ("Full-scale girth hyperbolically fans overtones outward")
+    {
+        const auto packet = mapper.computeTargets (1.0f, 1.0f);
+
+        const auto stereoSpread = [] (const std::pair<float, float>& pan)
+        {
+            return std::abs (pan.first - pan.second);
+        };
+
+        REQUIRE (packet.panningPairs[1].first > packet.panningPairs[1].second);
+        REQUIRE (packet.panningPairs[2].first < packet.panningPairs[2].second);
+        REQUIRE (stereoSpread (packet.panningPairs[6]) > stereoSpread (packet.panningPairs[1]));
     }
 
     SECTION ("Depth gates girth-driven morph spread")
