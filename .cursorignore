@@ -1,0 +1,4 @@
+build/
+Juce/
+.git/
+.vs/

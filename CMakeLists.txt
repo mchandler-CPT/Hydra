@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.22)
 # ==============================================================================
 # 1. PROJECT CONFIGURATION
 # ==============================================================================
-# Change "BoutiqueTemplate" to your new project name when cloning
-project(BoutiqueTemplate VERSION 1.0.0 LANGUAGES CXX)
+# Change "Boutique Template" to your new project name when cloning
+project(Hydra VERSION 1.0.0 LANGUAGES CXX)
 
 include(FetchContent)
 include(CTest)
@@ -32,11 +32,11 @@ endif()
 # ==============================================================================
 # 3. JUCE PLUGIN DECLARATION
 # ==============================================================================
-juce_add_plugin(BoutiqueTemplate
+juce_add_plugin(Hydra
     COMPANY_NAME "bdEnergy"
     PLUGIN_MANUFACTURER "bdEnergy"
     PLUGIN_MANUFACTURER_CODE "BDEN"
-    BUNDLE_ID "com.synth.template"
+    BUNDLE_ID "com.synth.hydra"
     FORMATS ${BOUTIQUE_PLUGIN_FORMATS}
     
     # --------------------------------------------------------------------------
@@ -48,24 +48,24 @@ juce_add_plugin(BoutiqueTemplate
     NEEDS_MIDI_INPUT TRUE         
     # --------------------------------------------------------------------------
     
-    PLUGIN_CODE "TMPL"             # Change this 4-char ID for every new project!
-    PLUGIN_NAME "BoutiqueTemplate"
-    PRODUCT_NAME "BoutiqueTemplate"
-    DESCRIPTION "Boutique Blueprint Base"
+    PLUGIN_CODE "HYDR"             # Change this 4-char ID for every new project!
+    PLUGIN_NAME "Hydra"
+    PRODUCT_NAME "Hydra"
+    DESCRIPTION "Hydra"
 )
 
 # Apple-specific plugin property mapping
 if(APPLE)
-    set_target_properties(BoutiqueTemplate PROPERTIES 
+    set_target_properties(Hydra PROPERTIES 
         JUCE_AU_MANUFACTURER_CODE "BDEN"
-        JUCE_AU_PLUGIN_CODE "TMPL" # Must match PLUGIN_CODE above
-        JUCE_PLUGIN_CODE "TMPL"
+        JUCE_AU_PLUGIN_CODE "HYDR" # Must match PLUGIN_CODE above
+        JUCE_PLUGIN_CODE "HYDR"
         JUCE_MANUFACTURER_CODE "BDEN"
     )
 endif()
 
-set_target_properties(BoutiqueTemplate PROPERTIES
-    JUCE_PLUGIN_CODE "TMPL"
+set_target_properties(Hydra PROPERTIES
+    JUCE_PLUGIN_CODE "HYDR"
     JUCE_MANUFACTURER_CODE "BDEN"
     
     # --------------------------------------------------------------------------
@@ -77,43 +77,36 @@ set_target_properties(BoutiqueTemplate PROPERTIES
     # --------------------------------------------------------------------------
 )
 
-juce_generate_juce_header(BoutiqueTemplate)
-
-# Shared asset management tracking (keeps logo.png ready to roll)
-juce_add_binary_data(TemplateAssets
-    SOURCES
-        logo.png
-)
+juce_generate_juce_header(Hydra)
 
 # ==============================================================================
 # 4. SOURCE FILE COMPILATION
 # ==============================================================================
-target_sources(BoutiqueTemplate PRIVATE
+target_sources(Hydra PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginProcessor.h
     Source/PluginEditor.cpp
     Source/PluginEditor.h
     
-    # Place your custom /DSP, /Parameters, and /UI paths down here as you write them:
-    # Source/DSP/MyNewFilter.h
+    Source/DSP/HydraEngine.h
+    Source/DSP/HydraEngine.cpp
 ) 
 
-target_include_directories(BoutiqueTemplate PRIVATE Source)
+target_include_directories(Hydra PRIVATE Source)
 
 # Link your dependencies (Keeping juce_dsp active for instant access to filters/saturation)
-target_link_libraries(BoutiqueTemplate PRIVATE
-    TemplateAssets
+target_link_libraries(Hydra PRIVATE
     juce::juce_audio_utils
     juce::juce_audio_processors
     juce::juce_dsp           
     juce::juce_gui_basics
 )
 
-target_compile_definitions(BoutiqueTemplate PUBLIC 
+target_compile_definitions(Hydra PUBLIC 
     JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
-target_compile_features(BoutiqueTemplate PRIVATE cxx_std_20)
+target_compile_features(Hydra PRIVATE cxx_std_20)
 
 # ==============================================================================
 # 5. TEST INFRASTRUCTURE (CATCH2)

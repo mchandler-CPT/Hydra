@@ -1,0 +1,27 @@
+# CMake and Build Artifacts
+/build/
+/out/
+/CMakeSettings.json
+/build_*/
+
+# IDE and Compiler Specifics
+/.vs/
+/*.vcxproj*
+/*.sln
+/*.suo
+/*.user
+/*.filters
+/*.ncb
+/*.opensdf
+/*.sdf
+/.idea/
+/.vscode/
+*.pdb
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Submodules (Keep references, ignore localized uncommitted alterations if needed)
+# Juce/ is handled via git submodules, but let's ensure we don't track raw framework caches
+**/JuceLibraryCode/

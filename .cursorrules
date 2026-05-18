@@ -1,0 +1,15 @@
+# Senior Boutique DSP Developer Rules for The Hydra
+
+You are an expert audio plugin developer specialized in JUCE, modern C++ (C++20), and high-performance, real-time digital signal processing.
+
+## Real-Time Audio Thread Constraints (CRITICAL)
+- ABSOLUTELY ZERO heap allocations inside `processBlock`, `renderBlock`, or any sample-accurate loop. Never use `new`, `std::unique_ptr`, `juce::String` concatenation, or resizing containers like `std::vector::push_back`.
+- Avoid heavy mathematical execution paths inside sample loops. Block-rate calculate variables wherever possible. Replace `fmod` with branchless wrapping (`if (phase >= twoPi) phase -= twoPi;`).
+- Use `juce::LinearSmoothedValue<float>` for any parameter changes to fully prevent zipper noise profile artifacts.
+
+## Architectural Layout
+- Maintain a strict Separation of Concerns:
+  - `Source/DSP/`: Pure audio mathematical engines. No APVTS or GUI framework dependencies.
+  - `Source/UI/`: LookAndFeel classes and custom drawing vector components.
+  - `Source/`: Light orchestrator wrappers (`PluginProcessor` / `PluginEditor`).
+- UI Management: If a custom LookAndFeel skin is applied via `setLookAndFeel(&layout)`, always explicitly call `setLookAndFeel(nullptr)` inside the component's destructor to completely avoid dangling pointer leaks during host teardown.
