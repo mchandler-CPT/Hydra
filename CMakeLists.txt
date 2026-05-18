@@ -90,6 +90,10 @@ target_sources(Hydra PRIVATE
     
     Source/DSP/HydraEngine.h
     Source/DSP/HydraEngine.cpp
+    Source/DSP/HydraOscillator.h
+    Source/DSP/HydraOscillator.cpp
+    Source/DSP/HydraMacroMapper.h
+    Source/DSP/HydraMacroMapper.cpp
 ) 
 
 target_include_directories(Hydra PRIVATE Source)
@@ -122,6 +126,8 @@ add_executable(BoutiqueTests
     Tests/PluginTests.cpp
     Tests/HydraEngineTests.cpp
     Source/DSP/HydraEngine.cpp
+    Source/DSP/HydraOscillator.cpp
+    Source/DSP/HydraMacroMapper.cpp
 )
 
 target_include_directories(BoutiqueTests PRIVATE Source)
@@ -132,8 +138,6 @@ target_link_libraries(BoutiqueTests PRIVATE
     juce::juce_audio_basics
     juce::juce_dsp
 )
-
-target_compile_definitions(BoutiqueTests PRIVATE HYDRA_TEST_ACCESS)
 
 target_compile_features(BoutiqueTests PRIVATE cxx_std_20)
 

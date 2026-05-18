@@ -1,12 +1,13 @@
 #pragma once
 
+#include "HydraMacroMapper.h"
+#include "HydraOscillator.h"
+
 #include <juce_dsp/juce_dsp.h>
 #include <array>
 
-struct HydraHead
+struct HydraPartialVoice
 {
-    double phase = 0.0;
-    double phaseIncrement = 0.0;
     juce::LinearSmoothedValue<float> amplitude;
     juce::LinearSmoothedValue<float> morph;
     juce::LinearSmoothedValue<float> panL;
@@ -15,12 +16,8 @@ struct HydraHead
 
 class HydraEngine
 {
-#ifdef HYDRA_TEST_ACCESS
-    friend struct HydraEngineTestAccess;
-#endif
-
 public:
-    static constexpr int numPartials = 7;
+    static constexpr int numPartials = HydraMacroMapper::numPartials;
 
     void prepare (double sampleRate, int samplesPerBlock);
     void reset() noexcept;
@@ -29,7 +26,8 @@ public:
     void noteOff (int midiNoteNumber) noexcept;
 
     void setMorph (float morph) noexcept;
-    void setPan (float pan) noexcept;
+    void setDepth (float depth) noexcept;
+    void setGirth (float girth) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
 
@@ -38,30 +36,15 @@ private:
     static constexpr double twoPi = juce::MathConstants<double>::twoPi;
 
     static double midiNoteToFrequency (int midiNoteNumber) noexcept;
-    static float evaluatePartial (double theta, float morph) noexcept;
-
-    void setFundamentalFrequency (double fundamentalHz) noexcept;
+    void applyMacroTargets() noexcept;
 
     double sampleRate = 44100.0;
-    std::array<HydraHead, numPartials> heads {};
+    float depth = 0.0f;
+    float girth = 0.0f;
+    float noteVelocity = 0.0f;
+    bool noteIsActive = false;
+
+    HydraMacroMapper macroMapper;
+    std::array<HydraOscillator, numPartials> oscillators {};
+    std::array<HydraPartialVoice, numPartials> voices {};
 };
-
-#ifdef HYDRA_TEST_ACCESS
-struct HydraEngineTestAccess
-{
-    static const HydraHead& getHead (const HydraEngine& engine, int index)
-    {
-        return engine.heads[static_cast<size_t> (index)];
-    }
-
-    static float evaluatePartialAt (double theta, float morph)
-    {
-        return HydraEngine::evaluatePartial (theta, morph);
-    }
-
-    static double midiNoteToHz (int midiNoteNumber)
-    {
-        return HydraEngine::midiNoteToFrequency (midiNoteNumber);
-    }
-};
-#endif

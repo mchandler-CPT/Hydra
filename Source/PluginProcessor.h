@@ -1,5 +1,11 @@
 #pragma once
+
+#include "DSP/HydraEngine.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
+
+#include <atomic>
+#include <vector>
 
 class HydraAudioProcessor : public juce::AudioProcessor
 {
@@ -24,13 +30,27 @@ public:
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
-    void setCurrentProgram (int index) override {}
-    const juce::String getProgramName (int index) override { return {}; }
-    void changeProgramName (int index, const juce::String& newName) override {}
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
+    void changeProgramName (int index, const juce::String& newName) override;
 
-    void getStateInformation (juce::MemoryBlock& destData) override {}
-    void setStateInformation (const void* data, int sizeInBytes) override {}
+    void getStateInformation (juce::MemoryBlock& destData) override;
+    void setStateInformation (const void* data, int sizeInBytes) override;
+
+    juce::AudioProcessorValueTreeState& getApvts() { return apvts; }
 
 private:
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    HydraEngine hydraEngine;
+    juce::AudioProcessorValueTreeState apvts;
+
+    std::atomic<float>* depthParam { nullptr };
+    std::atomic<float>* girthParam { nullptr };
+    std::atomic<float>* morphParam { nullptr };
+    std::atomic<float>* gainParam { nullptr };
+
+    std::vector<float> monoRightScratch;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HydraAudioProcessor)
 };

@@ -2,62 +2,9 @@
 
 #include <cmath>
 
-namespace
-{
-constexpr float kMorphMin = 0.0f;
-constexpr float kMorphMax = 3.0f;
-
-float evaluateSine (double theta) noexcept
-{
-    return std::sin (static_cast<float> (theta));
-}
-
-float evaluateTriangle (double theta) noexcept
-{
-    return (2.0f / juce::MathConstants<float>::pi)
-         * std::asin (std::sin (static_cast<float> (theta)));
-}
-
-float evaluateSawtooth (double theta) noexcept
-{
-    auto wrapped = std::fmod (theta, juce::MathConstants<double>::twoPi);
-    if (wrapped < 0.0)
-        wrapped += juce::MathConstants<double>::twoPi;
-
-    return static_cast<float> (2.0 * (wrapped / juce::MathConstants<double>::twoPi) - 1.0);
-}
-
-float evaluateBitCrush (float saw, float morph) noexcept
-{
-    const auto bits = juce::jmap (morph, 2.0f, 3.0f, 16.0f, 3.0f);
-    return std::floor (saw * bits) / bits;
-}
-} // namespace
-
 double HydraEngine::midiNoteToFrequency (int midiNoteNumber) noexcept
 {
     return 440.0 * std::pow (2.0, (midiNoteNumber - 69) / 12.0);
-}
-
-float HydraEngine::evaluatePartial (double theta, float morph) noexcept
-{
-    const auto clampedMorph = juce::jlimit (kMorphMin, kMorphMax, morph);
-    const auto sine = evaluateSine (theta);
-    const auto triangle = evaluateTriangle (theta);
-    const auto saw = evaluateSawtooth (theta);
-
-    if (clampedMorph < 1.0f)
-        return juce::jmap (clampedMorph, 0.0f, 1.0f, sine, triangle);
-
-    if (clampedMorph < 2.0f)
-    {
-        const auto blend = clampedMorph - 1.0f;
-        return juce::jmap (blend, 0.0f, 1.0f, triangle, saw);
-    }
-
-    const auto blend = clampedMorph - 2.0f;
-    const auto crushed = evaluateBitCrush (saw, clampedMorph);
-    return juce::jmap (blend, 0.0f, 1.0f, saw, crushed);
 }
 
 void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
@@ -66,85 +13,103 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
 
     constexpr double smoothingSeconds = 0.01;
 
-    for (auto& head : heads)
+    for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
-        head.amplitude.reset (sampleRate, smoothingSeconds);
-        head.morph.reset (sampleRate, smoothingSeconds);
-        head.panL.reset (sampleRate, smoothingSeconds);
-        head.panR.reset (sampleRate, smoothingSeconds);
+        auto& oscillator = oscillators[static_cast<size_t> (partialIndex)];
+        auto& voice = voices[static_cast<size_t> (partialIndex)];
 
-        head.amplitude.setCurrentAndTargetValue (0.0f);
-        head.morph.setCurrentAndTargetValue (0.0f);
-        head.panL.setCurrentAndTargetValue (1.0f);
-        head.panR.setCurrentAndTargetValue (1.0f);
+        oscillator.setSampleRate (sampleRate);
 
-        head.phase = 0.0;
-        head.phaseIncrement = 0.0;
+        voice.amplitude.reset (sampleRate, smoothingSeconds);
+        voice.morph.reset (sampleRate, smoothingSeconds);
+        voice.panL.reset (sampleRate, smoothingSeconds);
+        voice.panR.reset (sampleRate, smoothingSeconds);
+
+        voice.amplitude.setCurrentAndTargetValue (0.0f);
+        voice.morph.setCurrentAndTargetValue (0.0f);
+        voice.panL.setCurrentAndTargetValue (1.0f);
+        voice.panR.setCurrentAndTargetValue (0.0f);
     }
 }
 
 void HydraEngine::reset() noexcept
 {
-    for (auto& head : heads)
+    noteIsActive = false;
+    noteVelocity = 0.0f;
+
+    for (auto& voice : voices)
     {
-        head.amplitude.setCurrentAndTargetValue (0.0f);
-        head.morph.setCurrentAndTargetValue (0.0f);
-        head.phase = 0.0;
-        head.phaseIncrement = 0.0;
+        voice.amplitude.setCurrentAndTargetValue (0.0f);
+        voice.morph.setCurrentAndTargetValue (0.0f);
+        voice.panL.setCurrentAndTargetValue (1.0f);
+        voice.panR.setCurrentAndTargetValue (0.0f);
     }
+
+    for (auto& oscillator : oscillators)
+        oscillator.setPhase (0.0);
 }
 
-void HydraEngine::setFundamentalFrequency (double fundamentalHz) noexcept
+void HydraEngine::applyMacroTargets() noexcept
 {
+    const auto packet = macroMapper.computeTargets (depth, girth);
+    const auto gain = noteIsActive ? noteVelocity : 0.0f;
+
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
-        const auto harmonic = static_cast<double> (partialIndex + 1);
-        heads[static_cast<size_t> (partialIndex)].phaseIncrement
-            = twoPi * fundamentalHz * harmonic / sampleRate;
+        const auto index = static_cast<size_t> (partialIndex);
+        auto& voice = voices[index];
+
+        voice.amplitude.setTargetValue (packet.amplitudes[index] * gain);
+        voice.panL.setTargetValue (packet.panningPairs[index].first);
+        voice.panR.setTargetValue (packet.panningPairs[index].second);
     }
 }
 
 void HydraEngine::noteOn (int midiNoteNumber, float velocity)
 {
     const auto fundamentalHz = midiNoteToFrequency (midiNoteNumber);
-    setFundamentalFrequency (fundamentalHz);
-
-    const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
+    noteVelocity = juce::jlimit (0.0f, 1.0f, velocity);
+    noteIsActive = true;
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
-        auto& head = heads[static_cast<size_t> (partialIndex)];
-        head.phase = twoPi / static_cast<double> (primeNumbers[static_cast<size_t> (partialIndex)]);
-        head.amplitude.setTargetValue (clampedVelocity);
+        const auto index = static_cast<size_t> (partialIndex);
+        const auto harmonic = static_cast<double> (partialIndex + 1);
+
+        oscillators[index].setFrequency (fundamentalHz * harmonic);
+        oscillators[index].setPhase (twoPi / static_cast<double> (primeNumbers[index]));
     }
+
+    applyMacroTargets();
 }
 
 void HydraEngine::noteOff (int /*midiNoteNumber*/) noexcept
 {
-    for (auto& head : heads)
-        head.amplitude.setTargetValue (0.0f);
+    noteIsActive = false;
+    noteVelocity = 0.0f;
+
+    for (auto& voice : voices)
+        voice.amplitude.setTargetValue (0.0f);
 }
 
 void HydraEngine::setMorph (float morph) noexcept
 {
-    const auto clampedMorph = juce::jlimit (kMorphMin, kMorphMax, morph);
+    const auto clampedMorph = juce::jlimit (0.0f, 3.0f, morph);
 
-    for (auto& head : heads)
-        head.morph.setTargetValue (clampedMorph);
+    for (auto& voice : voices)
+        voice.morph.setTargetValue (clampedMorph);
 }
 
-void HydraEngine::setPan (float pan) noexcept
+void HydraEngine::setDepth (float newDepth) noexcept
 {
-    const auto clampedPan = juce::jlimit (-1.0f, 1.0f, pan);
-    const auto angle = (clampedPan + 1.0f) * juce::MathConstants<float>::pi * 0.25f;
-    const auto leftGain = std::cos (angle);
-    const auto rightGain = std::sin (angle);
+    depth = juce::jlimit (0.0f, 1.0f, newDepth);
+    applyMacroTargets();
+}
 
-    for (auto& head : heads)
-    {
-        head.panL.setTargetValue (leftGain);
-        head.panR.setTargetValue (rightGain);
-    }
+void HydraEngine::setGirth (float newGirth) noexcept
+{
+    girth = juce::jlimit (0.0f, 1.0f, newGirth);
+    applyMacroTargets();
 }
 
 void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept
@@ -154,20 +119,22 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         auto leftSample = 0.0f;
         auto rightSample = 0.0f;
 
-        for (auto& head : heads)
+        for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
         {
-            const auto amplitude = head.amplitude.getNextValue();
-            const auto morph = head.morph.getNextValue();
-            const auto panL = head.panL.getNextValue();
-            const auto panR = head.panR.getNextValue();
+            const auto index = static_cast<size_t> (partialIndex);
+            auto& oscillator = oscillators[index];
+            auto& voice = voices[index];
 
-            const auto partialSample = evaluatePartial (head.phase, morph) * amplitude;
+            const auto amplitude = voice.amplitude.getNextValue();
+            const auto morph = voice.morph.getNextValue();
+            const auto panL = voice.panL.getNextValue();
+            const auto panR = voice.panR.getNextValue();
+
+            const auto partialSample = oscillator.evaluateSample (morph) * amplitude;
             leftSample += partialSample * panL;
             rightSample += partialSample * panR;
 
-            head.phase += head.phaseIncrement;
-            if (head.phase >= twoPi)
-                head.phase -= twoPi;
+            oscillator.advance();
         }
 
         leftChannel[sampleIndex] = leftSample;
