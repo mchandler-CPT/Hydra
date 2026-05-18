@@ -41,6 +41,7 @@ private:
 
     static double midiNoteToFrequency (int midiNoteNumber) noexcept;
     void applyMacroTargets() noexcept;
+    void retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept;
 
     double sampleRate = 44100.0;
     float depth = 0.0f;
@@ -48,6 +49,9 @@ private:
     float noteVelocity = 0.0f;
     float voiceAmplitude = 0.0f;
     bool noteIsActive = false;
+
+    std::array<int, 16> noteStack {};
+    int numNotesInStack = 0;
     bool isKeyHeld = false;
 
     HydraMacroMapper macroMapper;

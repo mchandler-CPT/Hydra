@@ -37,6 +37,8 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
 void HydraEngine::reset() noexcept
 {
     noteIsActive = false;
+    numNotesInStack = 0;
+    noteStack.fill (0);
     isKeyHeld = false;
     noteVelocity = 0.0f;
     voiceAmplitude = 0.0f;
@@ -73,16 +75,9 @@ void HydraEngine::applyMacroTargets() noexcept
     }
 }
 
-void HydraEngine::noteOn (int midiNoteNumber, float velocity)
+void HydraEngine::retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept
 {
     const auto fundamentalHz = midiNoteToFrequency (midiNoteNumber);
-    const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
-    const auto isLegatoTransition = (voiceAmplitude > 0.0f);
-
-    noteVelocity = clampedVelocity;
-    voiceAmplitude = clampedVelocity;
-    isKeyHeld = true;
-    noteIsActive = true;
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
@@ -90,7 +85,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
         const auto harmonic = static_cast<double> (partialIndex + 1);
         const auto harmonicFrequency = fundamentalHz * harmonic;
 
-        if (isLegatoTransition)
+        if (glidePitch)
         {
             oscillators[index].setFrequency (harmonicFrequency, true);
         }
@@ -100,12 +95,63 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
             oscillators[index].setFrequency (harmonicFrequency, false);
         }
     }
+}
+
+void HydraEngine::noteOn (int midiNoteNumber, float velocity)
+{
+    auto noteAlreadyHeld = false;
+
+    for (int stackIndex = 0; stackIndex < numNotesInStack; ++stackIndex)
+    {
+        if (noteStack[static_cast<size_t> (stackIndex)] == midiNoteNumber)
+        {
+            noteAlreadyHeld = true;
+            break;
+        }
+    }
+
+    if (! noteAlreadyHeld && numNotesInStack < static_cast<int> (noteStack.size()))
+    {
+        noteStack[static_cast<size_t> (numNotesInStack)] = midiNoteNumber;
+        ++numNotesInStack;
+    }
+
+    const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
+    const auto isLegatoTransition = (voiceAmplitude > 0.0f);
+    const auto activeNote = noteStack[static_cast<size_t> (numNotesInStack - 1)];
+
+    retuneOscillatorsForNote (activeNote, isLegatoTransition);
+
+    noteVelocity = clampedVelocity;
+    voiceAmplitude = clampedVelocity;
+    isKeyHeld = true;
+    noteIsActive = true;
 
     applyMacroTargets();
 }
 
-void HydraEngine::noteOff (int /*midiNoteNumber*/) noexcept
+void HydraEngine::noteOff (int midiNoteNumber) noexcept
 {
+    for (int stackIndex = 0; stackIndex < numNotesInStack; ++stackIndex)
+    {
+        if (noteStack[static_cast<size_t> (stackIndex)] != midiNoteNumber)
+            continue;
+
+        for (int shiftIndex = stackIndex; shiftIndex < numNotesInStack - 1; ++shiftIndex)
+            noteStack[static_cast<size_t> (shiftIndex)] = noteStack[static_cast<size_t> (shiftIndex + 1)];
+
+        --numNotesInStack;
+        break;
+    }
+
+    if (numNotesInStack > 0)
+    {
+        const auto underlyingNote = noteStack[static_cast<size_t> (numNotesInStack - 1)];
+        retuneOscillatorsForNote (underlyingNote, true);
+        isKeyHeld = true;
+        return;
+    }
+
     isKeyHeld = false;
 }
 
@@ -181,6 +227,9 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
     {
         noteIsActive = false;
         noteVelocity = 0.0f;
+        numNotesInStack = 0;
+        noteStack.fill (0);
+        isKeyHeld = false;
 
         for (auto& voice : voices)
             voice.amplitude.setCurrentAndTargetValue (0.0f);
