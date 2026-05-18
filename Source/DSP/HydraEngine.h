@@ -31,6 +31,8 @@ public:
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
 
+    float getVoiceAmplitude() const noexcept { return voiceAmplitude; }
+
 private:
     static constexpr std::array<int, numPartials> primeNumbers { 2, 3, 5, 7, 11, 13, 17 };
     static constexpr double twoPi = juce::MathConstants<double>::twoPi;
@@ -42,7 +44,9 @@ private:
     float depth = 0.0f;
     float girth = 0.0f;
     float noteVelocity = 0.0f;
+    float voiceAmplitude = 0.0f;
     bool noteIsActive = false;
+    bool isKeyHeld = false;
 
     HydraMacroMapper macroMapper;
     std::array<HydraOscillator, numPartials> oscillators {};

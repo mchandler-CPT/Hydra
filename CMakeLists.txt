@@ -98,6 +98,8 @@ target_sources(Hydra PRIVATE
     Source/DSP/HydraOscillator.cpp
     Source/DSP/HydraMacroMapper.h
     Source/DSP/HydraMacroMapper.cpp
+    Source/DSP/ZdfLadderFilter.h
+    Source/DSP/ZdfLadderFilter.cpp
 ) 
 
 target_include_directories(Hydra PRIVATE Source Source/UI)

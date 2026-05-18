@@ -28,12 +28,15 @@ private:
     XyExplorer xyExplorer;
 
     juce::Slider morphSlider;
+    juce::Slider filterCutoffSlider;
     juce::Slider gainSlider;
 
     juce::Label morphLabel;
+    juce::Label filterCutoffLabel;
     juce::Label gainLabel;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterCutoffAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 
     juce::MidiKeyboardComponent keyboardComponent;

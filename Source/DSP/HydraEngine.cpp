@@ -35,7 +35,9 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
 void HydraEngine::reset() noexcept
 {
     noteIsActive = false;
+    isKeyHeld = false;
     noteVelocity = 0.0f;
+    voiceAmplitude = 0.0f;
 
     for (auto& voice : voices)
     {
@@ -52,14 +54,13 @@ void HydraEngine::reset() noexcept
 void HydraEngine::applyMacroTargets() noexcept
 {
     const auto packet = macroMapper.computeTargets (depth, girth);
-    const auto gain = noteIsActive ? noteVelocity : 0.0f;
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
         const auto index = static_cast<size_t> (partialIndex);
         auto& voice = voices[index];
 
-        voice.amplitude.setTargetValue (packet.amplitudes[index] * gain);
+        voice.amplitude.setTargetValue (packet.amplitudes[index]);
         voice.panL.setTargetValue (packet.panningPairs[index].first);
         voice.panR.setTargetValue (packet.panningPairs[index].second);
     }
@@ -68,7 +69,11 @@ void HydraEngine::applyMacroTargets() noexcept
 void HydraEngine::noteOn (int midiNoteNumber, float velocity)
 {
     const auto fundamentalHz = midiNoteToFrequency (midiNoteNumber);
-    noteVelocity = juce::jlimit (0.0f, 1.0f, velocity);
+    const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
+
+    noteVelocity = clampedVelocity;
+    voiceAmplitude = clampedVelocity;
+    isKeyHeld = true;
     noteIsActive = true;
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
@@ -85,11 +90,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
 
 void HydraEngine::noteOff (int /*midiNoteNumber*/) noexcept
 {
-    noteIsActive = false;
-    noteVelocity = 0.0f;
-
-    for (auto& voice : voices)
-        voice.amplitude.setTargetValue (0.0f);
+    isKeyHeld = false;
 }
 
 void HydraEngine::setMorph (float morph) noexcept
@@ -116,6 +117,21 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 {
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {
+        if (! isKeyHeld)
+        {
+            voiceAmplitude *= 0.9995f;
+
+            if (voiceAmplitude < 0.001f)
+                voiceAmplitude = 0.0f;
+        }
+
+        if (voiceAmplitude == 0.0f)
+        {
+            leftChannel[sampleIndex] = 0.0f;
+            rightChannel[sampleIndex] = 0.0f;
+            continue;
+        }
+
         auto leftSample = 0.0f;
         auto rightSample = 0.0f;
 
@@ -137,7 +153,16 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             oscillator.advance();
         }
 
-        leftChannel[sampleIndex] = leftSample;
-        rightChannel[sampleIndex] = rightSample;
+        leftChannel[sampleIndex] = leftSample * voiceAmplitude;
+        rightChannel[sampleIndex] = rightSample * voiceAmplitude;
+    }
+
+    if (voiceAmplitude == 0.0f)
+    {
+        noteIsActive = false;
+        noteVelocity = 0.0f;
+
+        for (auto& voice : voices)
+            voice.amplitude.setCurrentAndTargetValue (0.0f);
     }
 }

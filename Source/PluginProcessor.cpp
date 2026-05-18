@@ -7,6 +7,8 @@ constexpr const char* kDepthParamId = "depth";
 constexpr const char* kGirthParamId = "girth";
 constexpr const char* kMorphParamId = "morph";
 constexpr const char* kGainParamId = "gain";
+constexpr const char* kCutoffParamId = "cutoff";
+constexpr const char* kResParamId = "res";
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
@@ -27,7 +29,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kGainParamId, 1 },
                                                      "Master Gain",
                                                      juce::NormalisableRange<float> { 0.0f, 1.0f },
-                                                     0.5f)
+                                                     0.5f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kCutoffParamId, 1 },
+                                                     "Filter Cutoff",
+                                                     juce::NormalisableRange<float> { 20.0f, 20000.0f, 0.25f },
+                                                     20000.0f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kResParamId, 1 },
+                                                     "Resonance",
+                                                     juce::NormalisableRange<float> { 0.0f, 4.0f },
+                                                     1.0f)
     };
 }
 
@@ -37,23 +47,44 @@ HydraAudioProcessor::HydraAudioProcessor()
                           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    oversampler = std::make_unique<juce::dsp::Oversampling<float>> (
+        2,
+        2,
+        juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+        true);
+
     depthParam = apvts.getRawParameterValue (kDepthParamId);
     girthParam = apvts.getRawParameterValue (kGirthParamId);
     morphParam = apvts.getRawParameterValue (kMorphParamId);
     gainParam = apvts.getRawParameterValue (kGainParamId);
+    cutoffParam = apvts.getRawParameterValue (kCutoffParamId);
+    resParam = apvts.getRawParameterValue (kResParamId);
 }
 
 HydraAudioProcessor::~HydraAudioProcessor() {}
 
 void HydraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    hydraEngine.prepare (sampleRate, samplesPerBlock);
-    monoRightScratch.resize (static_cast<size_t> (samplesPerBlock));
+    currentSampleRate = sampleRate;
+
+    oversampler->initProcessing (static_cast<size_t> (samplesPerBlock));
+    const auto oversamplingFactor = static_cast<double> (oversampler->getOversamplingFactor());
+    oversampledSampleRate = sampleRate * oversamplingFactor;
+
+    const auto oversampledBlockSize = static_cast<int> (samplesPerBlock * oversampler->getOversamplingFactor());
+    hydraEngine.prepare (oversampledSampleRate, oversampledBlockSize);
+
+    filterL.reset();
+    filterR.reset();
+    monoRightScratch.resize (static_cast<size_t> (oversampledBlockSize));
 }
 
 void HydraAudioProcessor::releaseResources()
 {
     monoRightScratch.clear();
+
+    if (oversampler != nullptr)
+        oversampler->reset();
 }
 
 bool HydraAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -102,24 +133,62 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         }
     }
 
-    const auto numSamples = buffer.getNumSamples();
-    auto* leftChannel = buffer.getWritePointer (0);
+    const auto cutoff = cutoffParam->load();
+    const auto resonance = resParam->load();
 
-    if (buffer.getNumChannels() > 1)
+    juce::dsp::AudioBlock<float> inputBlock (buffer);
+    auto oversampledBlock = oversampler->processSamplesUp (inputBlock);
+
+    const auto osNumSamples = static_cast<int> (oversampledBlock.getNumSamples());
+
+    if (oversampledBlock.getNumChannels() > 1)
     {
-        auto* rightChannel = buffer.getWritePointer (1);
-        hydraEngine.renderBlock (leftChannel, rightChannel, numSamples);
+        auto* leftChannel = oversampledBlock.getChannelPointer (0);
+        auto* rightChannel = oversampledBlock.getChannelPointer (1);
+
+        hydraEngine.renderBlock (leftChannel, rightChannel, osNumSamples);
+
+        for (int sample = 0; sample < osNumSamples; ++sample)
+        {
+            leftChannel[sample] = filterL.processSample (leftChannel[sample],
+                                                           cutoff,
+                                                           resonance,
+                                                           oversampledSampleRate);
+            rightChannel[sample] = filterR.processSample (rightChannel[sample],
+                                                            cutoff,
+                                                            resonance,
+                                                            oversampledSampleRate);
+        }
+
+        if (hydraEngine.getVoiceAmplitude() == 0.0f)
+        {
+            filterL.reset();
+            filterR.reset();
+        }
     }
     else
     {
-        if (static_cast<int> (monoRightScratch.size()) < numSamples)
-            monoRightScratch.resize (static_cast<size_t> (numSamples));
+        auto* leftChannel = oversampledBlock.getChannelPointer (0);
 
-        hydraEngine.renderBlock (leftChannel, monoRightScratch.data(), numSamples);
+        if (static_cast<int> (monoRightScratch.size()) < osNumSamples)
+            monoRightScratch.resize (static_cast<size_t> (osNumSamples));
 
-        for (int sample = 0; sample < numSamples; ++sample)
-            leftChannel[sample] = 0.5f * (leftChannel[sample] + monoRightScratch[static_cast<size_t> (sample)]);
+        hydraEngine.renderBlock (leftChannel, monoRightScratch.data(), osNumSamples);
+
+        for (int sample = 0; sample < osNumSamples; ++sample)
+        {
+            const auto monoSample = 0.5f * (leftChannel[sample] + monoRightScratch[static_cast<size_t> (sample)]);
+            leftChannel[sample] = filterL.processSample (monoSample,
+                                                           cutoff,
+                                                           resonance,
+                                                           oversampledSampleRate);
+        }
+
+        if (hydraEngine.getVoiceAmplitude() == 0.0f)
+            filterL.reset();
     }
+
+    oversampler->processSamplesDown (inputBlock);
 
     const auto gain = gainParam->load();
     buffer.applyGain (gain);

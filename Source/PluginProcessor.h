@@ -1,10 +1,13 @@
 #pragma once
 
 #include "DSP/HydraEngine.h"
+#include "DSP/ZdfLadderFilter.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
 
 #include <atomic>
+#include <memory>
 #include <vector>
 
 class HydraAudioProcessor : public juce::AudioProcessor
@@ -46,13 +49,20 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     HydraEngine hydraEngine;
+    ZdfLadderFilter filterL;
+    ZdfLadderFilter filterR;
+    std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     juce::AudioProcessorValueTreeState apvts;
 
     std::atomic<float>* depthParam { nullptr };
     std::atomic<float>* girthParam { nullptr };
     std::atomic<float>* morphParam { nullptr };
     std::atomic<float>* gainParam { nullptr };
+    std::atomic<float>* cutoffParam { nullptr };
+    std::atomic<float>* resParam { nullptr };
 
+    double currentSampleRate = 44100.0;
+    double oversampledSampleRate = 44100.0;
     std::vector<float> monoRightScratch;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HydraAudioProcessor)

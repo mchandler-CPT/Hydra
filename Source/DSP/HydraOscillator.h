@@ -21,8 +21,8 @@ private:
 
     static float evaluateSine (double theta) noexcept;
     static float evaluateTriangle (double theta) noexcept;
+    static float evaluateSquare (double theta) noexcept;
     static float evaluateSawtooth (double theta) noexcept;
-    static float evaluateBitCrush (float saw, float morphState) noexcept;
 
     double currentPhase = 0.0;
     double phaseIncrement = 0.0;
