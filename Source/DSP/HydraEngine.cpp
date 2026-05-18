@@ -7,6 +7,35 @@ double HydraEngine::midiNoteToFrequency (int midiNoteNumber) noexcept
     return 440.0 * std::pow (2.0, (midiNoteNumber - 69) / 12.0);
 }
 
+void HydraPartialVoice::configureDelay (double oversampledSampleRate, int partialIndex) noexcept
+{
+    static constexpr std::array<float, 7> delayTimesVsIndex {
+        0.0f, 0.0021f, 0.0044f, 0.0068f, 0.0093f, 0.00119f, 0.0145f
+    };
+
+    if (partialIndex <= 0)
+    {
+        delayInSamples = 0;
+        return;
+    }
+
+    const auto index = static_cast<size_t> (partialIndex);
+    delayInSamples = static_cast<int> (delayTimesVsIndex[index] * oversampledSampleRate);
+    delayInSamples = juce::jmin (delayInSamples, delayBufferMask);
+}
+
+void HydraPartialVoice::clearDelay() noexcept
+{
+    delayBuffer.fill (0.0f);
+    writeIndex = 0;
+}
+
+void HydraEngine::clearAllDelayLines() noexcept
+{
+    for (auto& voice : voices)
+        voice.clearDelay();
+}
+
 void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
 {
     sampleRate = newSampleRate;
@@ -31,6 +60,9 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
         voice.morph.setCurrentAndTargetValue (0.0f);
         voice.panL.setCurrentAndTargetValue (1.0f);
         voice.panR.setCurrentAndTargetValue (0.0f);
+
+        voice.configureDelay (sampleRate, partialIndex);
+        voice.clearDelay();
     }
 }
 
@@ -52,6 +84,8 @@ void HydraEngine::reset() noexcept
         voice.panL.setCurrentAndTargetValue (1.0f);
         voice.panR.setCurrentAndTargetValue (0.0f);
     }
+
+    clearAllDelayLines();
 
     for (auto& oscillator : oscillators)
     {
@@ -201,7 +235,9 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             const auto panL = voice.panL.getNextValue();
             const auto panR = voice.panR.getNextValue();
 
-            const auto partialSample = oscillator.evaluateSample (morph) * amplitude;
+            const auto oscillated = oscillator.evaluateSample (morph);
+            const auto delayed = voice.processDelaySample (oscillated);
+            const auto partialSample = delayed * amplitude;
             partialSamplesLeft[index] = partialSample * panL;
             partialSamplesRight[index] = partialSample * panR;
 
@@ -230,6 +266,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             voice.morph.setCurrentAndTargetValue (0.0f);
         }
 
+        clearAllDelayLines();
         phaseDisperser.reset();
     }
 }

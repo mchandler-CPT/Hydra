@@ -2,7 +2,7 @@
 
 namespace
 {
-constexpr int kEditorWidth = 500;
+constexpr int kEditorWidth = 625;
 constexpr int kControlPanelHeight = 250;
 constexpr int kEditorHeight = 320;
 constexpr int kKeyboardHeight = 70;
@@ -11,9 +11,12 @@ constexpr int kLabelBandHeight = 24;
 constexpr int kCutoffTextBoxBandHeight = 20;
 constexpr int kCutoffTextBoxWidth = 70;
 constexpr int kCutoffTextBoxHeight = 18;
-constexpr int kCutoffColumnBottomInset = 22;
+constexpr int kResTextBoxWidth = 70;
+constexpr int kResTextBoxHeight = 18;
+constexpr int kControlColumnBottomInset = 22;
 constexpr int kCutoffColumnX = 250;
-constexpr int kGainColumnX = 375;
+constexpr int kResColumnX = 375;
+constexpr int kGainColumnX = 500;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
 } // namespace
 
@@ -43,6 +46,20 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     filterCutoffLabel.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::bold }));
     filterCutoffLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
 
+    filterResSlider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
+    filterResSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, true, kResTextBoxWidth, kResTextBoxHeight);
+    filterResSlider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
+    filterResSlider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    filterResSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible (filterResSlider);
+
+    filterResLabel.setText ("RESONANCE", juce::dontSendNotification);
+    filterResLabel.setFont (juce::Font (juce::FontOptions { 12.0f, juce::Font::bold }));
+    filterResLabel.setJustificationType (juce::Justification::centred);
+    filterResLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.5f));
+    filterResLabel.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (filterResLabel);
+
     auto& apvts = audioProcessor.getApvts();
 
     if (auto* depthParam = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter ("depth")))
@@ -50,6 +67,7 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
             xyExplorer.setParameters (*depthParam, *girthParam);
 
     filterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "cutoff", filterCutoffSlider);
+    filterResAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "res", filterResSlider);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "gain", gainSlider);
 }
 
@@ -91,22 +109,18 @@ void HydraAudioProcessorEditor::resized()
 
     auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
 
-    const auto placeColumnAtX = [&controlPanel] (int x,
-                                                 juce::Slider& slider,
-                                                 juce::Label& label)
+    const auto placeControlColumn = [&controlPanel] (int x,
+                                                     juce::Slider& slider,
+                                                     juce::Label& label,
+                                                     int textBoxBandHeight)
     {
         auto column = controlPanel.withX (x).withWidth (kColumnWidth);
-
         label.setBounds (column.removeFromTop (kLabelBandHeight));
+        column.removeFromBottom (textBoxBandHeight + kControlColumnBottomInset);
         slider.setBounds (column);
     };
 
-    {
-        auto cutoffColumn = controlPanel.withX (kCutoffColumnX).withWidth (kColumnWidth);
-        filterCutoffLabel.setBounds (cutoffColumn.removeFromTop (kLabelBandHeight));
-        cutoffColumn.removeFromBottom (kCutoffColumnBottomInset);
-        filterCutoffSlider.setBounds (cutoffColumn);
-    }
-
-    placeColumnAtX (kGainColumnX, gainSlider, gainLabel);
+    placeControlColumn (kCutoffColumnX, filterCutoffSlider, filterCutoffLabel, kCutoffTextBoxBandHeight);
+    placeControlColumn (kResColumnX, filterResSlider, filterResLabel, kResTextBoxHeight);
+    placeControlColumn (kGainColumnX, gainSlider, gainLabel, 0);
 }

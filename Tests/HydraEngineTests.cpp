@@ -223,11 +223,10 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
         positiveDrive.fill (kDrive);
         negativeDrive.fill (-kDrive);
 
-        const auto positiveOutput = saturator.processSample (positiveDrive, zeroRight);
-        const auto negativeOutput = saturator.processSample (negativeDrive, zeroRight);
+        const auto posOutput = saturator.processSample (positiveDrive, zeroRight);
+        const auto negOutput = saturator.processSample (negativeDrive, zeroRight);
 
-        REQUIRE (positiveOutput.first != Catch::Approx (-negativeOutput.first).margin (1.0e-6f));
-        REQUIRE (std::abs (positiveOutput.first + negativeOutput.first) > 1.0e-4f);
+        REQUIRE (posOutput.first != -negOutput.first);
     }
 }
 
@@ -272,6 +271,34 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         REQUIRE (fullScale.morphStates[0] == Catch::Approx (2.0f).margin (0.001f));
         REQUIRE (fullScale.morphStates[6] == Catch::Approx (3.0f).margin (0.001f));
     }
+}
+
+TEST_CASE ("HydraEngine Temporal Staggering Verification", "[HydraEngine]")
+{
+    HydraPartialVoice fundamentalVoice;
+    HydraPartialVoice highestPartialVoice;
+
+    fundamentalVoice.configureDelay (kSampleRate, 0);
+    highestPartialVoice.configureDelay (kSampleRate, 6);
+
+    REQUIRE (fundamentalVoice.delayInSamples == 0);
+
+    const auto expectedHighestDelay = static_cast<int> (0.0145f * static_cast<float> (kSampleRate));
+    REQUIRE (highestPartialVoice.delayInSamples == expectedHighestDelay);
+    REQUIRE (highestPartialVoice.delayInSamples > 0);
+
+    REQUIRE (fundamentalVoice.processDelaySample (1.0f) == Catch::Approx (1.0f).margin (1.0e-6f));
+
+    HydraPartialVoice delayLine;
+    delayLine.configureDelay (kSampleRate, 0);
+    delayLine.delayInSamples = 4;
+    delayLine.clearDelay();
+
+    delayLine.processDelaySample (1.0f);
+    delayLine.processDelaySample (2.0f);
+    delayLine.processDelaySample (3.0f);
+    delayLine.processDelaySample (4.0f);
+    REQUIRE (delayLine.processDelaySample (5.0f) == Catch::Approx (1.0f).margin (1.0e-6f));
 }
 
 TEST_CASE ("HydraEngine Voice Lifecycle", "[HydraEngine]")

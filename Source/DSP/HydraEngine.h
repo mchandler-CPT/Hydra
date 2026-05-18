@@ -10,10 +10,35 @@
 
 struct HydraPartialVoice
 {
+    static constexpr int delayBufferSize = 16384;
+    static constexpr int delayBufferMask = delayBufferSize - 1;
+
     juce::LinearSmoothedValue<float> amplitude;
     juce::LinearSmoothedValue<float> morph;
     juce::LinearSmoothedValue<float> panL;
     juce::LinearSmoothedValue<float> panR;
+
+    std::array<float, delayBufferSize> delayBuffer {};
+    int writeIndex = 0;
+    int delayInSamples = 0;
+
+    void configureDelay (double oversampledSampleRate, int partialIndex) noexcept;
+    void clearDelay() noexcept;
+
+    inline float processDelaySample (float inputSample) noexcept
+    {
+        if (delayInSamples <= 0)
+            return inputSample;
+
+        delayBuffer[static_cast<size_t> (writeIndex)] = inputSample;
+
+        const auto readIndex = (writeIndex - delayInSamples + delayBufferSize) & delayBufferMask;
+        const auto delayedOutput = delayBuffer[static_cast<size_t> (readIndex)];
+
+        writeIndex = (writeIndex + 1) & delayBufferMask;
+
+        return delayedOutput;
+    }
 };
 
 class HydraEngine
@@ -41,6 +66,7 @@ private:
     static double midiNoteToFrequency (int midiNoteNumber) noexcept;
     void applyMacroTargets() noexcept;
     void retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept;
+    void clearAllDelayLines() noexcept;
 
     double sampleRate = 44100.0;
     float depth = 0.0f;

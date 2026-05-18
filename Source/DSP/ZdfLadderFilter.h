@@ -12,4 +12,5 @@ private:
     float s2 = 0.0f;
     float s3 = 0.0f;
     float s4 = 0.0f;
+    float lastOutput = 0.0f;
 };

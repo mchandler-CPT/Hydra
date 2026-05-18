@@ -10,13 +10,15 @@ void ZdfLadderFilter::reset() noexcept
     s2 = 0.0f;
     s3 = 0.0f;
     s4 = 0.0f;
+    lastOutput = 0.0f;
 }
 
 float ZdfLadderFilter::processSample (float input, float cutoffHz, float resonance, double sampleRate) noexcept
 {
-    const auto nyquistGuard = 0.40f * static_cast<float> (sampleRate);
-    const auto clampedCutoff = juce::jlimit (20.0f, nyquistGuard, cutoffHz);
     const auto clampedResonance = juce::jlimit (0.0f, 4.0f, resonance);
+
+    const auto modulatedCutoff = cutoffHz + (lastOutput * clampedResonance * 600.0f);
+    const auto clampedCutoff = juce::jlimit (20.0f, 0.40f * static_cast<float> (sampleRate), modulatedCutoff);
 
     const auto g = std::tan (juce::MathConstants<float>::pi * clampedCutoff / static_cast<float> (sampleRate));
     const auto h = g / (1.0f + g);
@@ -44,5 +46,6 @@ float ZdfLadderFilter::processSample (float input, float cutoffHz, float resonan
     const auto y4 = v4 + s4;
     s4 = y4 + v4;
 
+    lastOutput = y4;
     return y4;
 }
