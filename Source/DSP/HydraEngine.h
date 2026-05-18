@@ -27,7 +27,6 @@ public:
     void noteOn (int midiNoteNumber, float velocity);
     void noteOff (int midiNoteNumber) noexcept;
 
-    void setMorph (float morph) noexcept;
     void setDepth (float depth) noexcept;
     void setGirth (float girth) noexcept;
 

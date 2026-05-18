@@ -7,6 +7,7 @@ struct HarmonicTargetPacket
 {
     std::array<float, 7> amplitudes {};
     std::array<std::pair<float, float>, 7> panningPairs {};
+    std::array<float, 7> morphStates {};
 };
 
 class HydraMacroMapper

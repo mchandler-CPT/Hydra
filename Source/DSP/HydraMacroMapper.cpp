@@ -12,8 +12,9 @@ float HydraMacroMapper::sigmoidalBloom (float depth, float betaN, float alphaN) 
 
 HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth) const noexcept
 {
-    const auto clampedDepth = juce::jlimit (0.0f, 1.0f, depth);
-    const auto clampedGirth = juce::jlimit (0.0f, 1.0f, girth);
+    const auto X = juce::jlimit (0.0f, 1.0f, depth);
+    const auto Y = juce::jlimit (0.0f, 1.0f, girth);
+    const auto effectiveGirth = Y * juce::jlimit (0.0f, 1.0f, X * 2.0f);
 
     HarmonicTargetPacket packet;
     std::array<float, numPartials> rawAmplitudes {};
@@ -23,12 +24,15 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth)
         const auto index = static_cast<size_t> (partialIndex);
         const auto harmonicWeight = static_cast<float> (partialIndex) / static_cast<float> (numPartials - 1);
 
-        rawAmplitudes[index] = sigmoidalBloom (clampedDepth, beta[index], alpha[index]);
-        rawAmplitudes[index] *= 1.0f + clampedGirth * harmonicWeight;
+        rawAmplitudes[index] = sigmoidalBloom (X, beta[index], alpha[index]);
+        rawAmplitudes[index] *= 1.0f + Y * harmonicWeight;
 
-        const auto panPosition = 0.5f + (harmonicWeight - 0.5f) * clampedGirth;
+        const auto panPosition = 0.5f + (harmonicWeight - 0.5f) * effectiveGirth;
         const auto panAngle = panPosition * juce::MathConstants<float>::halfPi;
         packet.panningPairs[index] = { std::cos (panAngle), std::sin (panAngle) };
+
+        const auto rawMorph = effectiveGirth * (1.0f + 0.5f * static_cast<float> (partialIndex));
+        packet.morphStates[index] = juce::jlimit (0.0f, 3.0f, rawMorph);
     }
 
     auto energySum = 0.0f;
@@ -38,6 +42,7 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth)
     if (energySum <= std::numeric_limits<float>::epsilon())
     {
         packet.amplitudes.fill (0.0f);
+        packet.morphStates.fill (0.0f);
         return packet;
     }
 

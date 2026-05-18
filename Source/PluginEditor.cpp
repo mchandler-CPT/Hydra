@@ -2,15 +2,14 @@
 
 namespace
 {
-constexpr int kEditorWidth = 625;
+constexpr int kEditorWidth = 500;
 constexpr int kControlPanelHeight = 250;
 constexpr int kEditorHeight = 320;
 constexpr int kKeyboardHeight = 70;
 constexpr int kColumnWidth = 125;
 constexpr int kLabelBandHeight = 24;
-constexpr int kMorphColumnX = 250;
-constexpr int kCutoffColumnX = 375;
-constexpr int kGainColumnX = 500;
+constexpr int kCutoffColumnX = 250;
+constexpr int kGainColumnX = 375;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
 } // namespace
 
@@ -25,7 +24,6 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     addAndMakeVisible (keyboardComponent);
     addAndMakeVisible (xyExplorer);
 
-    configureSlider (morphSlider, "WAVE MORPH", morphLabel);
     configureSlider (filterCutoffSlider, "FILTER CUTOFF", filterCutoffLabel);
     configureSlider (gainSlider, "MASTER GAIN", gainLabel);
 
@@ -38,7 +36,6 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
         if (auto* girthParam = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter ("girth")))
             xyExplorer.setParameters (*depthParam, *girthParam);
 
-    morphAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "morph", morphSlider);
     filterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "cutoff", filterCutoffSlider);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "gain", gainSlider);
 }
@@ -91,7 +88,6 @@ void HydraAudioProcessorEditor::resized()
         slider.setBounds (column);
     };
 
-    placeColumnAtX (kMorphColumnX, morphSlider, morphLabel);
     placeColumnAtX (kCutoffColumnX, filterCutoffSlider, filterCutoffLabel);
     placeColumnAtX (kGainColumnX, gainSlider, gainLabel);
 }

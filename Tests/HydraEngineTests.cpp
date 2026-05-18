@@ -209,19 +209,44 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
 TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 {
     HydraMacroMapper mapper;
-    const std::array<std::pair<float, float>, 3> macroVariations {
-        std::pair<float, float> { 0.0f, 0.0f },
-        { 0.5f, 0.5f },
-        { 1.0f, 1.0f }
-    };
 
-    for (const auto [depth, girth] : macroVariations)
+    SECTION ("RSS energy and panning remain normalized")
     {
-        const auto packet = mapper.computeTargets (depth, girth);
-        REQUIRE (sumSquaredAmplitudes (packet) == Catch::Approx (1.0f).margin (0.0001f));
+        const std::array<std::pair<float, float>, 3> macroVariations {
+            std::pair<float, float> { 0.0f, 0.0f },
+            { 0.5f, 0.5f },
+            { 1.0f, 1.0f }
+        };
 
-        for (const auto& [panL, panR] : packet.panningPairs)
-            REQUIRE ((panL * panL + panR * panR) == Catch::Approx (1.0f).margin (1.0e-5f));
+        for (const auto [depth, girth] : macroVariations)
+        {
+            const auto packet = mapper.computeTargets (depth, girth);
+
+            if (depth > 0.0f)
+            {
+                REQUIRE (sumSquaredAmplitudes (packet) == Catch::Approx (1.0f).margin (0.0001f));
+
+                for (const auto& [panL, panR] : packet.panningPairs)
+                    REQUIRE ((panL * panL + panR * panR) == Catch::Approx (1.0f).margin (1.0e-5f));
+            }
+        }
+    }
+
+    SECTION ("Depth gates girth-driven morph spread")
+    {
+        const auto silentDepth = mapper.computeTargets (0.0f, 1.0f);
+
+        for (const auto morph : silentDepth.morphStates)
+            REQUIRE (morph == Catch::Approx (0.0f).margin (1.0e-6f));
+    }
+
+    SECTION ("Full-scale XY maps morph ladder across partials")
+    {
+        const auto fullScale = mapper.computeTargets (1.0f, 1.0f);
+
+        REQUIRE (fullScale.morphStates[0] == Catch::Approx (1.0f).margin (1.0e-6f));
+        REQUIRE (fullScale.morphStates[0] < 1.5f);
+        REQUIRE (fullScale.morphStates[6] == Catch::Approx (3.0f).margin (1.0e-6f));
     }
 }
 
@@ -238,7 +263,6 @@ TEST_CASE ("HydraEngine Voice Lifecycle", "[HydraEngine]")
     {
         engine.setDepth (1.0f);
         engine.setGirth (0.0f);
-        engine.setMorph (0.0f);
         engine.noteOn (69, 1.0f);
 
         REQUIRE (renderPeak (engine, static_cast<int> (kSampleRate * 0.05)) > 0.05f);
@@ -248,7 +272,6 @@ TEST_CASE ("HydraEngine Voice Lifecycle", "[HydraEngine]")
     {
         engine.reset();
         engine.setDepth (1.0f);
-        engine.setMorph (0.0f);
         engine.noteOn (69, 1.0f);
         renderPeak (engine, static_cast<int> (kSampleRate * 0.02));
 
@@ -263,7 +286,6 @@ TEST_CASE ("HydraEngine Voice Lifecycle", "[HydraEngine]")
     {
         engine.setDepth (1.0f);
         engine.setGirth (1.0f);
-        engine.setMorph (0.0f);
         engine.noteOn (69, 1.0f);
 
         std::vector<float> left (static_cast<size_t> (kSampleRate * 0.05), 0.0f);

@@ -70,6 +70,7 @@ void HydraEngine::applyMacroTargets() noexcept
         auto& voice = voices[index];
 
         voice.amplitude.setTargetValue (packet.amplitudes[index]);
+        voice.morph.setTargetValue (packet.morphStates[index]);
         voice.panL.setTargetValue (packet.panningPairs[index].first);
         voice.panR.setTargetValue (packet.panningPairs[index].second);
     }
@@ -155,14 +156,6 @@ void HydraEngine::noteOff (int midiNoteNumber) noexcept
     isKeyHeld = false;
 }
 
-void HydraEngine::setMorph (float morph) noexcept
-{
-    const auto clampedMorph = juce::jlimit (0.0f, 3.0f, morph);
-
-    for (auto& voice : voices)
-        voice.morph.setTargetValue (clampedMorph);
-}
-
 void HydraEngine::setDepth (float newDepth) noexcept
 {
     depth = juce::jlimit (0.0f, 1.0f, newDepth);
@@ -232,7 +225,10 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         isKeyHeld = false;
 
         for (auto& voice : voices)
+        {
             voice.amplitude.setCurrentAndTargetValue (0.0f);
+            voice.morph.setCurrentAndTargetValue (0.0f);
+        }
 
         phaseDisperser.reset();
     }
