@@ -19,11 +19,6 @@ public:
 private:
     static constexpr double twoPi = juce::MathConstants<double>::twoPi;
 
-    static float evaluateSine (double theta) noexcept;
-    static float evaluateTriangle (double theta) noexcept;
-    static float evaluateSquare (double theta) noexcept;
-    static float evaluateSawtooth (double theta) noexcept;
-
     double currentPhase = 0.0;
     juce::LinearSmoothedValue<double> phaseIncrement { 0.0 };
     double sampleRate = 44100.0;

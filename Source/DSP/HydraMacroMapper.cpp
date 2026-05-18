@@ -31,8 +31,9 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth)
         const auto panAngle = panPosition * juce::MathConstants<float>::halfPi;
         packet.panningPairs[index] = { std::cos (panAngle), std::sin (panAngle) };
 
-        const auto rawMorph = effectiveGirth * (1.0f + 0.5f * static_cast<float> (partialIndex));
-        packet.morphStates[index] = juce::jlimit (0.0f, 3.0f, rawMorph);
+        const auto targetMorph = (effectiveGirth * 2.0f)
+                               + (effectiveGirth * 1.0f * (static_cast<float> (partialIndex) / 6.0f));
+        packet.morphStates[index] = juce::jlimit (0.0f, 3.0f, targetMorph);
     }
 
     auto energySum = 0.0f;

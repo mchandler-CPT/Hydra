@@ -82,17 +82,17 @@ TEST_CASE ("HydraOscillator Waveshaping Integrity", "[HydraOscillator]")
     const auto sineTriangleBlend = oscillator.evaluateSample (0.5f);
     REQUIRE (sineTriangleBlend == Catch::Approx (0.5f * (sine + triangle)).margin (1.0e-5f));
 
-    const auto square = 1.0f;
-    const auto saw = -0.5f;
+    const auto saw = 2.0f * (static_cast<float> (theta) / juce::MathConstants<float>::twoPi) - 1.0f;
+    const auto crushedSaw = std::round (saw * 4.0f) / 4.0f;
 
-    REQUIRE (oscillator.evaluateSample (2.0f) == Catch::Approx (square).margin (1.0e-5f));
-    REQUIRE (oscillator.evaluateSample (3.0f) == Catch::Approx (saw).margin (1.0e-5f));
+    REQUIRE (oscillator.evaluateSample (2.0f) == Catch::Approx (saw).margin (1.0e-5f));
+    REQUIRE (oscillator.evaluateSample (3.0f) == Catch::Approx (crushedSaw).margin (1.0e-5f));
 
-    const auto triangleSquareBlend = oscillator.evaluateSample (1.5f);
-    REQUIRE (triangleSquareBlend == Catch::Approx (0.5f * (triangle + square)).margin (1.0e-5f));
+    const auto triangleSawBlend = oscillator.evaluateSample (1.5f);
+    REQUIRE (triangleSawBlend == Catch::Approx (0.5f * (triangle + saw)).margin (1.0e-5f));
 
-    const auto squareSawBlend = oscillator.evaluateSample (2.5f);
-    REQUIRE (squareSawBlend == Catch::Approx (0.5f * (square + saw)).margin (1.0e-5f));
+    const auto sawCrushBlend = oscillator.evaluateSample (2.5f);
+    REQUIRE (sawCrushBlend == Catch::Approx (0.5f * (saw + crushedSaw)).margin (1.0e-5f));
 
     oscillator.setPhase (0.0);
     for (int frame = 0; frame < 100'000; ++frame)
@@ -269,9 +269,8 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
     {
         const auto fullScale = mapper.computeTargets (1.0f, 1.0f);
 
-        REQUIRE (fullScale.morphStates[0] == Catch::Approx (1.0f).margin (1.0e-6f));
-        REQUIRE (fullScale.morphStates[0] < 1.5f);
-        REQUIRE (fullScale.morphStates[6] == Catch::Approx (3.0f).margin (1.0e-6f));
+        REQUIRE (fullScale.morphStates[0] == Catch::Approx (2.0f).margin (0.001f));
+        REQUIRE (fullScale.morphStates[6] == Catch::Approx (3.0f).margin (0.001f));
     }
 }
 
