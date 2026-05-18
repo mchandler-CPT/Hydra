@@ -5,10 +5,13 @@
 
 #include <memory>
 
-class XyExplorer : public juce::Component
+class HydraAudioProcessor;
+
+class XyExplorer : public juce::Component,
+                   private juce::Timer
 {
 public:
-    XyExplorer();
+    explicit XyExplorer (HydraAudioProcessor& processor);
     ~XyExplorer() override;
 
     void setParameters (juce::RangedAudioParameter& depthParam, juce::RangedAudioParameter& girthParam);
@@ -19,7 +22,10 @@ public:
     void mouseDrag (const juce::MouseEvent& event) override;
 
 private:
+    void timerCallback() override;
     void updateParametersFromMouse (juce::Point<float> mousePos);
+
+    HydraAudioProcessor& audioProcessor;
 
     std::unique_ptr<juce::ParameterAttachment> xAttachment;
     std::unique_ptr<juce::ParameterAttachment> yAttachment;

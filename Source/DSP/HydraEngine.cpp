@@ -133,7 +133,7 @@ void HydraEngine::retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch)
         }
         else
         {
-            oscillators[index].setPhase (twoPi / static_cast<double> (primeNumbers[index]));
+            oscillators[index].setPhase (static_cast<double> (juce::MathConstants<float>::twoPi / primes[index]));
             oscillators[index].setFrequency (harmonicFrequency, false);
         }
     }

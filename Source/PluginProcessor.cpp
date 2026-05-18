@@ -186,6 +186,12 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     const auto gain = gainParam->load();
     buffer.applyGain (gain);
+
+    const auto* leftChannelData = buffer.getReadPointer (0);
+    const auto* rightChannelData = buffer.getNumChannels() > 1 ? buffer.getReadPointer (1) : leftChannelData;
+
+    for (int i = 0; i < buffer.getNumSamples(); ++i)
+        pushVisualSample (leftChannelData[i], rightChannelData[i]);
 }
 
 void HydraAudioProcessor::getStateInformation (juce::MemoryBlock& destData)

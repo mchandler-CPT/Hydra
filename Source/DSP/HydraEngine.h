@@ -61,7 +61,7 @@ public:
     float getVoiceAmplitude() const noexcept { return voiceAmplitude; }
 
 private:
-    static constexpr std::array<int, numPartials> primeNumbers { 2, 3, 5, 7, 11, 13, 17 };
+    static constexpr std::array<float, numPartials> primes { 2.0f, 3.0f, 5.0f, 7.0f, 11.0f, 13.0f, 17.0f };
     static constexpr double twoPi = juce::MathConstants<double>::twoPi;
 
     static double midiNoteToFrequency (int midiNoteNumber) noexcept;

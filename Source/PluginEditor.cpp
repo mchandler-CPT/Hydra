@@ -23,6 +23,7 @@ constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
 HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& processor)
     : AudioProcessorEditor (&processor),
       audioProcessor (processor),
+      xyExplorer (processor),
       keyboardComponent (processor.getKeyboardState(), juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel (&customLookAndFeel);

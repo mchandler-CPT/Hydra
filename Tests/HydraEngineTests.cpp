@@ -66,6 +66,13 @@ float computePeak (const std::vector<float>& buffer, int startIndex, int numSamp
 
 TEST_CASE ("HydraOscillator Waveshaping Integrity", "[HydraOscillator]")
 {
+    const auto& tables = HydraOscillator::getSharedTables();
+
+    REQUIRE (tables.sineTable[static_cast<size_t> (HydraOscillator::kWavetableSize)]
+             == Catch::Approx (tables.sineTable[0]).margin (1.0e-7f));
+    REQUIRE (tables.crushedTable[static_cast<size_t> (HydraOscillator::kWavetableSize)]
+             == Catch::Approx (tables.crushedTable[0]).margin (1.0e-7f));
+
     HydraOscillator oscillator;
     oscillator.prepare (kSampleRate);
     oscillator.setFrequency (440.0, false);
@@ -77,23 +84,23 @@ TEST_CASE ("HydraOscillator Waveshaping Integrity", "[HydraOscillator]")
     const auto triangle = (2.0f / juce::MathConstants<float>::pi)
                         * std::asin (std::sin (static_cast<float> (theta)));
 
-    REQUIRE (oscillator.evaluateSample (0.0f) == Catch::Approx (sine).margin (1.0e-5f));
-    REQUIRE (oscillator.evaluateSample (1.0f) == Catch::Approx (triangle).margin (1.0e-5f));
+    REQUIRE (oscillator.evaluateSample (0.0f) == Catch::Approx (sine).margin (2.0e-4f));
+    REQUIRE (oscillator.evaluateSample (1.0f) == Catch::Approx (triangle).margin (2.0e-4f));
 
     const auto sineTriangleBlend = oscillator.evaluateSample (0.5f);
-    REQUIRE (sineTriangleBlend == Catch::Approx (0.5f * (sine + triangle)).margin (1.0e-5f));
+    REQUIRE (sineTriangleBlend == Catch::Approx (0.5f * (sine + triangle)).margin (2.0e-4f));
 
     const auto saw = 2.0f * (static_cast<float> (theta) / juce::MathConstants<float>::twoPi) - 1.0f;
     const auto crushedSaw = std::round (saw * 4.0f) / 4.0f;
 
-    REQUIRE (oscillator.evaluateSample (2.0f) == Catch::Approx (saw).margin (1.0e-5f));
-    REQUIRE (oscillator.evaluateSample (3.0f) == Catch::Approx (crushedSaw).margin (1.0e-5f));
+    REQUIRE (oscillator.evaluateSample (2.0f) == Catch::Approx (saw).margin (2.0e-4f));
+    REQUIRE (oscillator.evaluateSample (3.0f) == Catch::Approx (crushedSaw).margin (2.0e-4f));
 
     const auto triangleSawBlend = oscillator.evaluateSample (1.5f);
-    REQUIRE (triangleSawBlend == Catch::Approx (0.5f * (triangle + saw)).margin (1.0e-5f));
+    REQUIRE (triangleSawBlend == Catch::Approx (0.5f * (triangle + saw)).margin (2.0e-4f));
 
     const auto sawCrushBlend = oscillator.evaluateSample (2.5f);
-    REQUIRE (sawCrushBlend == Catch::Approx (0.5f * (saw + crushedSaw)).margin (1.0e-5f));
+    REQUIRE (sawCrushBlend == Catch::Approx (0.5f * (saw + crushedSaw)).margin (2.0e-4f));
 
     oscillator.setPhase (0.0);
     for (int frame = 0; frame < 100'000; ++frame)

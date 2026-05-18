@@ -6,8 +6,10 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
+#include <array>
 #include <atomic>
 #include <memory>
+#include <utility>
 #include <vector>
 
 class HydraAudioProcessor : public juce::AudioProcessor
@@ -43,6 +45,24 @@ public:
     juce::AudioProcessorValueTreeState& getApvts() { return apvts; }
     juce::MidiKeyboardState& getKeyboardState() { return keyboardState; }
 
+    static constexpr int kFifoSize = 1024;
+
+    void pushVisualSample (float left, float right) noexcept
+    {
+        const auto writePos = fifoWriteIndex.load();
+        visualFifoL[static_cast<size_t> (writePos)] = left;
+        visualFifoR[static_cast<size_t> (writePos)] = right;
+        fifoWriteIndex.store ((writePos + 1) % kFifoSize);
+    }
+
+    std::pair<float, float> popVisualSample (int readIndex) const noexcept
+    {
+        const auto index = ((readIndex % kFifoSize) + kFifoSize) % kFifoSize;
+        return { visualFifoL[static_cast<size_t> (index)], visualFifoR[static_cast<size_t> (index)] };
+    }
+
+    int getLatestWriteIndex() const noexcept { return fifoWriteIndex.load(); }
+
     juce::MidiKeyboardState keyboardState;
 
 private:
@@ -63,6 +83,10 @@ private:
     double currentSampleRate = 44100.0;
     double oversampledSampleRate = 44100.0;
     std::vector<float> monoRightScratch;
+
+    std::array<float, kFifoSize> visualFifoL {};
+    std::array<float, kFifoSize> visualFifoR {};
+    std::atomic<int> fifoWriteIndex { 0 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HydraAudioProcessor)
 };

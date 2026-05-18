@@ -1,5 +1,7 @@
 #include "XyExplorer.h"
 
+#include "PluginProcessor.h"
+
 namespace
 {
 constexpr juce::uint32 kPanelFill = 0xff0d0c0b;
@@ -8,11 +10,24 @@ constexpr juce::uint32 kGridColour = 0x44c4a574;
 constexpr juce::uint32 kLabelColour = 0xff8a847c;
 constexpr juce::uint32 kThumbFill = 0xffc4a574;
 constexpr juce::uint32 kThumbAura = 0x88c4a574;
+constexpr int kScopeTraceSamples = 256;
 } // namespace
 
-XyExplorer::XyExplorer() = default;
+XyExplorer::XyExplorer (HydraAudioProcessor& processor)
+    : audioProcessor (processor)
+{
+    startTimerHz (60);
+}
 
-XyExplorer::~XyExplorer() = default;
+XyExplorer::~XyExplorer()
+{
+    stopTimer();
+}
+
+void XyExplorer::timerCallback()
+{
+    repaint();
+}
 
 void XyExplorer::setParameters (juce::RangedAudioParameter& depthParam, juce::RangedAudioParameter& girthParam)
 {
@@ -82,6 +97,29 @@ void XyExplorer::paint (juce::Graphics& g)
 
     g.setColour (juce::Colour (kPanelFill));
     g.fillRoundedRectangle (panelBounds, 6.0f);
+
+    const auto latestWrite = audioProcessor.getLatestWriteIndex();
+    const auto midY = panelBounds.getCentreY();
+    const auto widthFactor = panelBounds.getWidth() / static_cast<float> (kScopeTraceSamples);
+
+    juce::Path wavePath;
+
+    for (int i = 0; i < kScopeTraceSamples; ++i)
+    {
+        const auto samplePair = audioProcessor.popVisualSample (latestWrite - kScopeTraceSamples + i);
+        const auto mixedSample = (samplePair.first + samplePair.second) * 0.5f;
+
+        const auto x = panelBounds.getX() + static_cast<float> (i) * widthFactor;
+        const auto y = midY - (juce::jlimit (-1.0f, 1.0f, mixedSample) * midY * 0.6f);
+
+        if (i == 0)
+            wavePath.startNewSubPath (x, y);
+        else
+            wavePath.lineTo (x, y);
+    }
+
+    g.setColour (juce::Colours::gold.withAlpha (0.12f));
+    g.strokePath (wavePath, juce::PathStrokeType (1.5f));
 
     g.setColour (juce::Colour (kBorderColour));
     g.drawRoundedRectangle (panelBounds, 6.0f, 1.0f);
