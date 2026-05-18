@@ -54,6 +54,7 @@ public:
 
     void setDepth (float depth) noexcept;
     void setGirth (float girth) noexcept;
+    void setFilterCutoff (float cutoffHz) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
 
@@ -68,7 +69,11 @@ private:
     void retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept;
     void clearAllDelayLines() noexcept;
 
+    static constexpr float spectralDampingS = 0.0008f;
+
     double sampleRate = 44100.0;
+    float fundamentalFreq = 0.0f;
+    juce::LinearSmoothedValue<float> smoothedCutoffHz;
     float depth = 0.0f;
     float girth = 0.0f;
     float noteVelocity = 0.0f;

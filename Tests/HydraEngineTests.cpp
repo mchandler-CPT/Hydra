@@ -234,10 +234,11 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 {
     HydraMacroMapper mapper;
 
-    SECTION ("RSS energy and panning remain normalized")
+    SECTION ("RSS energy governor conserves unit power")
     {
-        const std::array<std::pair<float, float>, 3> macroVariations {
+        const std::array<std::pair<float, float>, 4> macroVariations {
             std::pair<float, float> { 0.0f, 0.0f },
+            { 0.0f, 1.0f },
             { 0.5f, 0.5f },
             { 1.0f, 1.0f }
         };
@@ -245,15 +246,20 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         for (const auto [depth, girth] : macroVariations)
         {
             const auto packet = mapper.computeTargets (depth, girth);
-
-            if (depth > 0.0f)
-            {
-                REQUIRE (sumSquaredAmplitudes (packet) == Catch::Approx (1.0f).margin (0.0001f));
-
-                for (const auto& [panL, panR] : packet.panningPairs)
-                    REQUIRE ((panL * panL + panR * panR) == Catch::Approx (1.0f).margin (1.0e-5f));
-            }
+            REQUIRE (sumSquaredAmplitudes (packet) == Catch::Approx (1.0f).margin (0.0001f));
         }
+    }
+
+    SECTION ("Depth zero yields logistic fundamental dominance")
+    {
+        const auto packet = mapper.computeTargets (0.0f, 0.5f);
+
+        REQUIRE (packet.amplitudes[0] > packet.amplitudes[1]);
+        REQUIRE (packet.amplitudes[0] > packet.amplitudes[6]);
+        REQUIRE (packet.amplitudes[6] == Catch::Approx (0.0f).margin (0.05f));
+
+        for (const auto& [panL, panR] : packet.panningPairs)
+            REQUIRE ((panL * panL + panR * panR) == Catch::Approx (1.0f).margin (1.0e-5f));
     }
 
     SECTION ("Depth gates girth-driven morph spread")

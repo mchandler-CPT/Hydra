@@ -44,6 +44,9 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
 
     phaseDisperser.prepare (sampleRate);
 
+    smoothedCutoffHz.reset (sampleRate, smoothingSeconds);
+    smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
+
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
         auto& oscillator = oscillators[static_cast<size_t> (partialIndex)];
@@ -74,6 +77,9 @@ void HydraEngine::reset() noexcept
     isKeyHeld = false;
     noteVelocity = 0.0f;
     voiceAmplitude = 0.0f;
+    fundamentalFreq = 0.0f;
+
+    smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
 
     phaseDisperser.reset();
 
@@ -113,6 +119,7 @@ void HydraEngine::applyMacroTargets() noexcept
 void HydraEngine::retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept
 {
     const auto fundamentalHz = midiNoteToFrequency (midiNoteNumber);
+    fundamentalFreq = static_cast<float> (fundamentalHz);
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
@@ -202,6 +209,11 @@ void HydraEngine::setGirth (float newGirth) noexcept
     applyMacroTargets();
 }
 
+void HydraEngine::setFilterCutoff (float cutoffHz) noexcept
+{
+    smoothedCutoffHz.setTargetValue (juce::jlimit (20.0f, 20000.0f, cutoffHz));
+}
+
 void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept
 {
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
@@ -221,6 +233,8 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             continue;
         }
 
+        const auto fc = smoothedCutoffHz.getNextValue();
+
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesLeft {};
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesRight {};
 
@@ -235,9 +249,12 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             const auto panL = voice.panL.getNextValue();
             const auto panR = voice.panR.getNextValue();
 
+            const auto fn = fundamentalFreq * static_cast<float> (partialIndex + 1);
+            const auto damping = (fn <= fc) ? 1.0f : std::exp (-(fn - fc) * spectralDampingS);
+
             const auto oscillated = oscillator.evaluateSample (morph);
             const auto delayed = voice.processDelaySample (oscillated);
-            const auto partialSample = delayed * amplitude;
+            const auto partialSample = delayed * amplitude * damping;
             partialSamplesLeft[index] = partialSample * panL;
             partialSamplesRight[index] = partialSample * panR;
 

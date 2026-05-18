@@ -110,6 +110,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     hydraEngine.setDepth (depth);
     hydraEngine.setGirth (girth);
+    hydraEngine.setFilterCutoff (cutoffParam->load());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
 
@@ -127,7 +128,6 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         }
     }
 
-    const auto cutoff = cutoffParam->load();
     const auto resonance = resParam->load();
 
     juce::dsp::AudioBlock<float> inputBlock (buffer);
@@ -145,11 +145,11 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         for (int sample = 0; sample < osNumSamples; ++sample)
         {
             leftChannel[sample] = filterL.processSample (leftChannel[sample],
-                                                           cutoff,
+                                                           cutoffParam->load(),
                                                            resonance,
                                                            oversampledSampleRate);
             rightChannel[sample] = filterR.processSample (rightChannel[sample],
-                                                            cutoff,
+                                                            cutoffParam->load(),
                                                             resonance,
                                                             oversampledSampleRate);
         }
@@ -173,7 +173,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         {
             const auto monoSample = 0.5f * (leftChannel[sample] + monoRightScratch[static_cast<size_t> (sample)]);
             leftChannel[sample] = filterL.processSample (monoSample,
-                                                           cutoff,
+                                                           cutoffParam->load(),
                                                            resonance,
                                                            oversampledSampleRate);
         }
