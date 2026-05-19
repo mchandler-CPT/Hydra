@@ -146,18 +146,7 @@ void HydraEngine::updateOscillatorTuning (bool glidePitch) noexcept
 
 void HydraEngine::retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept
 {
-    const auto fundamentalHz = midiNoteToFrequency (midiNoteNumber);
-    fundamentalFreq = static_cast<float> (fundamentalHz);
-
-    if (! glidePitch)
-    {
-        for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
-        {
-            const auto index = static_cast<size_t> (partialIndex);
-            oscillators[index].setPhase (static_cast<double> (juce::MathConstants<float>::twoPi / primes[index]));
-        }
-    }
-
+    fundamentalFreq = static_cast<float> (midiNoteToFrequency (midiNoteNumber));
     updateOscillatorTuning (glidePitch);
 }
 
@@ -181,15 +170,26 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     }
 
     const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
-    const auto isLegatoTransition = adsr.isActive();
+    const auto isNoteAlreadyPlaying = adsr.isActive();
     const auto activeNote = noteStack[static_cast<size_t> (numNotesInStack - 1)];
-
-    retuneOscillatorsForNote (activeNote, isLegatoTransition);
 
     noteVelocity = clampedVelocity;
     isKeyHeld = true;
     noteIsActive = true;
-    samplesSinceNoteOn = 0;
+
+    retuneOscillatorsForNote (activeNote, isNoteAlreadyPlaying);
+
+    if (! isNoteAlreadyPlaying)
+    {
+        samplesSinceNoteOn = 0;
+
+        for (auto& oscillator : oscillators)
+            oscillator.setPhase (0.0);
+    }
+    else
+    {
+        samplesSinceNoteOn = 0;
+    }
 
     adsr.noteOn();
     applyMacroTargets();
@@ -291,7 +291,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             const auto panR = voice.panR.getNextValue();
 
             const auto partialAttackSeconds =
-                baseAttackSeconds + (envWarp * 0.01f * static_cast<float> (partialIndex));
+                baseAttackSeconds + (envWarp * 0.05f * static_cast<float> (partialIndex));
             const auto partialAttackSamples = partialAttackSeconds * static_cast<float> (sampleRate);
 
             auto phaseIn = 1.0f;
