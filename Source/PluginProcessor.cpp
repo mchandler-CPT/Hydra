@@ -5,6 +5,7 @@ namespace
 {
 constexpr const char* kDepthParamId = "depth";
 constexpr const char* kGirthParamId = "girth";
+constexpr const char* kHarmonyParamId = "harmony";
 constexpr const char* kGainParamId = "gain";
 constexpr const char* kCutoffParamId = "cutoff";
 constexpr const char* kResParamId = "res";
@@ -21,6 +22,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
                                                      0.2f),
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kGirthParamId, 1 },
                                                      "Spatial Girth",
+                                                     juce::NormalisableRange<float> { 0.0f, 1.0f },
+                                                     0.0f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kHarmonyParamId, 1 },
+                                                     "Harmony",
                                                      juce::NormalisableRange<float> { 0.0f, 1.0f },
                                                      0.0f),
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kGainParamId, 1 },
@@ -52,6 +57,7 @@ HydraAudioProcessor::HydraAudioProcessor()
 
     depthParam = apvts.getRawParameterValue (kDepthParamId);
     girthParam = apvts.getRawParameterValue (kGirthParamId);
+    harmonyParam = apvts.getRawParameterValue (kHarmonyParamId);
     gainParam = apvts.getRawParameterValue (kGainParamId);
     cutoffParam = apvts.getRawParameterValue (kCutoffParamId);
     resParam = apvts.getRawParameterValue (kResParamId);
@@ -107,9 +113,11 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     const auto depth = depthParam->load();
     const auto girth = girthParam->load();
+    const auto harmony = harmonyParam->load();
 
     hydraEngine.setDepth (depth);
     hydraEngine.setGirth (girth);
+    hydraEngine.setHarmony (harmony);
     hydraEngine.setFilterCutoff (cutoffParam->load());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);

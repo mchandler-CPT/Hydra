@@ -20,21 +20,28 @@ public:
     void resized() override;
 
 private:
-    void configureSlider (juce::Slider& slider, const juce::String& labelText, juce::Label& label);
+    void configureRotaryKnob (juce::Slider& slider,
+                              juce::Label& label,
+                              const juce::String& labelText,
+                              bool showValueTextBox,
+                              const juce::String& valueSuffix = {});
 
     HydraAudioProcessor& audioProcessor;
     BoutiqueLookAndFeel customLookAndFeel;
 
     XyExplorer xyExplorer;
 
+    juce::Slider harmonySlider;
     juce::Slider filterCutoffSlider;
     juce::Slider filterResSlider;
     juce::Slider gainSlider;
 
+    juce::Label harmonyLabel;
     juce::Label filterCutoffLabel;
     juce::Label filterResLabel;
     juce::Label gainLabel;
 
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> harmonyAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterCutoffAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterResAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;

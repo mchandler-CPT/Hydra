@@ -102,7 +102,7 @@ void HydraEngine::reset() noexcept
 
 void HydraEngine::applyMacroTargets() noexcept
 {
-    const auto packet = macroMapper.computeTargets (depth, girth);
+    const auto packet = macroMapper.computeTargets (depth, girth, harmony);
     frequencyMultipliers = packet.frequencyMultipliers;
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
@@ -216,6 +216,12 @@ void HydraEngine::setDepth (float newDepth) noexcept
 void HydraEngine::setGirth (float newGirth) noexcept
 {
     girth = juce::jlimit (0.0f, 1.0f, newGirth);
+    applyMacroTargets();
+}
+
+void HydraEngine::setHarmony (float newHarmony) noexcept
+{
+    harmony = juce::jlimit (0.0f, 1.0f, newHarmony);
     applyMacroTargets();
 }
 

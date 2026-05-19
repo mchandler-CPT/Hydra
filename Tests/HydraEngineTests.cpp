@@ -279,14 +279,14 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 
         for (const auto [depth, girth] : macroVariations)
         {
-            const auto packet = mapper.computeTargets (depth, girth);
+            const auto packet = mapper.computeTargets (depth, girth, 0.0f);
             REQUIRE (sumSquaredAmplitudes (packet) == Catch::Approx (1.0f).margin (0.0001f));
         }
     }
 
     SECTION ("Depth zero yields logistic fundamental dominance")
     {
-        const auto packet = mapper.computeTargets (0.0f, 0.5f);
+        const auto packet = mapper.computeTargets (0.0f, 0.5f, 0.0f);
 
         REQUIRE (packet.amplitudes[0] > packet.amplitudes[1]);
         REQUIRE (packet.amplitudes[0] > packet.amplitudes[6]);
@@ -302,7 +302,7 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 
         for (const auto [depth, girth] : girthVariations)
         {
-            const auto packet = mapper.computeTargets (depth, girth);
+            const auto packet = mapper.computeTargets (depth, girth, 0.0f);
 
             REQUIRE (packet.panningPairs[0].first == Catch::Approx (packet.panningPairs[0].second).margin (1.0e-5f));
             REQUIRE (packet.panningPairs[0].first == Catch::Approx (0.707f).margin (1.0e-5f));
@@ -317,7 +317,7 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 
     SECTION ("Full-scale girth hyperbolically fans overtones outward")
     {
-        const auto packet = mapper.computeTargets (1.0f, 1.0f);
+        const auto packet = mapper.computeTargets (1.0f, 1.0f, 0.0f);
 
         const auto stereoSpread = [] (const std::pair<float, float>& pan)
         {
@@ -332,7 +332,7 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 
     SECTION ("Depth gates girth-driven morph and detune to pure sines")
     {
-        const auto silentDepth = mapper.computeTargets (0.0f, 1.0f);
+        const auto silentDepth = mapper.computeTargets (0.0f, 1.0f, 0.0f);
 
         for (const auto morph : silentDepth.morphTargets)
             REQUIRE (morph == Catch::Approx (0.0f).margin (1.0e-6f));
@@ -344,7 +344,7 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 
     SECTION ("Full-scale XY assigns tri-group morph roles")
     {
-        const auto fullScale = mapper.computeTargets (1.0f, 1.0f);
+        const auto fullScale = mapper.computeTargets (1.0f, 1.0f, 0.0f);
 
         REQUIRE (fullScale.morphTargets[0] == Catch::Approx (0.0f).margin (0.001f));
         REQUIRE (fullScale.morphTargets[1] == Catch::Approx (2.0f).margin (0.001f));
@@ -356,7 +356,7 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 
     SECTION ("Tri-group frequency multipliers use micro-cents swarm detune")
     {
-        const auto fullScale = mapper.computeTargets (1.0f, 1.0f);
+        const auto fullScale = mapper.computeTargets (1.0f, 1.0f, 0.0f);
 
         REQUIRE (fullScale.frequencyMultipliers[0] == Catch::Approx (1.0f).margin (0.001f));
         REQUIRE (fullScale.frequencyMultipliers[1] == Catch::Approx (2.0f).margin (0.001f));

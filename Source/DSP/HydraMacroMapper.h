@@ -16,5 +16,5 @@ class HydraMacroMapper
 public:
     static constexpr int numPartials = 7;
 
-    HarmonicTargetPacket computeTargets (float depth, float girth) const noexcept;
+    HarmonicTargetPacket computeTargets (float depth, float girth, float harmony) const noexcept;
 };

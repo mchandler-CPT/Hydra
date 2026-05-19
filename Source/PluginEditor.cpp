@@ -2,21 +2,22 @@
 
 namespace
 {
-constexpr int kEditorWidth = 625;
+constexpr int kEditorWidth = 750;
 constexpr int kControlPanelHeight = 250;
 constexpr int kEditorHeight = 320;
 constexpr int kKeyboardHeight = 70;
 constexpr int kColumnWidth = 125;
 constexpr int kLabelBandHeight = 24;
 constexpr int kCutoffTextBoxBandHeight = 20;
+constexpr int kRotarySliderBottomBandHeight = kCutoffTextBoxBandHeight;
 constexpr int kCutoffTextBoxWidth = 70;
 constexpr int kCutoffTextBoxHeight = 18;
-constexpr int kResTextBoxWidth = 70;
-constexpr int kResTextBoxHeight = 18;
 constexpr int kControlColumnBottomInset = 22;
-constexpr int kCutoffColumnX = 250;
-constexpr int kResColumnX = 375;
-constexpr int kGainColumnX = 500;
+constexpr int kXyPadRightMargin = 10;
+constexpr int kHarmonyColumnX = 15 + 220 + kXyPadRightMargin;
+constexpr int kCutoffColumnX = kHarmonyColumnX + kColumnWidth;
+constexpr int kResColumnX = kCutoffColumnX + kColumnWidth;
+constexpr int kGainColumnX = kResColumnX + kColumnWidth;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
 } // namespace
 
@@ -32,34 +33,15 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     addAndMakeVisible (keyboardComponent);
     addAndMakeVisible (xyExplorer);
 
-    configureSlider (filterCutoffSlider, "FILTER CUTOFF", filterCutoffLabel);
-    configureSlider (gainSlider, "MASTER GAIN", gainLabel);
-
-    filterCutoffSlider.setTextBoxStyle (juce::Slider::TextBoxBelow,
-                                        true,
-                                        kCutoffTextBoxWidth,
-                                        kCutoffTextBoxHeight);
-    filterCutoffSlider.setTextValueSuffix (" Hz");
-    filterCutoffSlider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
-    filterCutoffSlider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    filterCutoffSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    configureRotaryKnob (harmonySlider, harmonyLabel, "HARMONY", false);
+    configureRotaryKnob (filterCutoffSlider, filterCutoffLabel, "FILTER CUTOFF", true, " Hz");
+    configureRotaryKnob (filterResSlider, filterResLabel, "RESONANCE", true);
+    configureRotaryKnob (gainSlider, gainLabel, "MASTER GAIN", false);
 
     filterCutoffLabel.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::bold }));
     filterCutoffLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
-
-    filterResSlider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
-    filterResSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, true, kResTextBoxWidth, kResTextBoxHeight);
-    filterResSlider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
-    filterResSlider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    filterResSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
-    addAndMakeVisible (filterResSlider);
-
-    filterResLabel.setText ("RESONANCE", juce::dontSendNotification);
     filterResLabel.setFont (juce::Font (juce::FontOptions { 12.0f, juce::Font::bold }));
-    filterResLabel.setJustificationType (juce::Justification::centred);
     filterResLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.5f));
-    filterResLabel.setInterceptsMouseClicks (false, false);
-    addAndMakeVisible (filterResLabel);
 
     auto& apvts = audioProcessor.getApvts();
 
@@ -67,6 +49,7 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
         if (auto* girthParam = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter ("girth")))
             xyExplorer.setParameters (*depthParam, *girthParam);
 
+    harmonyAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "harmony", harmonySlider);
     filterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "cutoff", filterCutoffSlider);
     filterResAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "res", filterResSlider);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "gain", gainSlider);
@@ -77,12 +60,35 @@ HydraAudioProcessorEditor::~HydraAudioProcessorEditor()
     setLookAndFeel (nullptr);
 }
 
-void HydraAudioProcessorEditor::configureSlider (juce::Slider& slider,
-                                                 const juce::String& labelText,
-                                                 juce::Label& label)
+void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
+                                                     juce::Label& label,
+                                                     const juce::String& labelText,
+                                                     const bool showValueTextBox,
+                                                     const juce::String& valueSuffix)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
-    slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+    slider.setTextBoxStyle (juce::Slider::TextBoxBelow,
+                            showValueTextBox,
+                            kCutoffTextBoxWidth,
+                            kCutoffTextBoxHeight);
+
+    if (showValueTextBox)
+    {
+        slider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
+        slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+        slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+
+        if (valueSuffix.isNotEmpty())
+            slider.setTextValueSuffix (valueSuffix);
+    }
+    else
+    {
+        slider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::transparentBlack);
+        slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+        slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+        slider.textFromValueFunction = [] (double) { return juce::String(); };
+    }
+
     addAndMakeVisible (slider);
 
     label.setText (labelText, juce::dontSendNotification);
@@ -121,7 +127,8 @@ void HydraAudioProcessorEditor::resized()
         slider.setBounds (column);
     };
 
-    placeControlColumn (kCutoffColumnX, filterCutoffSlider, filterCutoffLabel, kCutoffTextBoxBandHeight);
-    placeControlColumn (kResColumnX, filterResSlider, filterResLabel, kResTextBoxHeight);
-    placeControlColumn (kGainColumnX, gainSlider, gainLabel, 0);
+    placeControlColumn (kHarmonyColumnX, harmonySlider, harmonyLabel, kRotarySliderBottomBandHeight);
+    placeControlColumn (kCutoffColumnX, filterCutoffSlider, filterCutoffLabel, kRotarySliderBottomBandHeight);
+    placeControlColumn (kResColumnX, filterResSlider, filterResLabel, kRotarySliderBottomBandHeight);
+    placeControlColumn (kGainColumnX, gainSlider, gainLabel, kRotarySliderBottomBandHeight);
 }

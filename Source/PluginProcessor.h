@@ -76,6 +76,7 @@ private:
 
     std::atomic<float>* depthParam { nullptr };
     std::atomic<float>* girthParam { nullptr };
+    std::atomic<float>* harmonyParam { nullptr };
     std::atomic<float>* gainParam { nullptr };
     std::atomic<float>* cutoffParam { nullptr };
     std::atomic<float>* resParam { nullptr };

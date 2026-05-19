@@ -54,6 +54,7 @@ public:
 
     void setDepth (float depth) noexcept;
     void setGirth (float girth) noexcept;
+    void setHarmony (float harmony) noexcept;
     void setFilterCutoff (float cutoffHz) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
@@ -77,6 +78,7 @@ private:
     juce::LinearSmoothedValue<float> smoothedCutoffHz;
     float depth = 0.0f;
     float girth = 0.0f;
+    float harmony = 0.0f;
     std::array<float, numPartials> frequencyMultipliers { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
     float noteVelocity = 0.0f;
     float voiceAmplitude = 0.0f;
