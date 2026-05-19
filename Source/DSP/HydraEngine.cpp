@@ -103,6 +103,7 @@ void HydraEngine::reset() noexcept
 void HydraEngine::applyMacroTargets() noexcept
 {
     const auto packet = macroMapper.computeTargets (depth, girth);
+    frequencyMultipliers = packet.frequencyMultipliers;
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
@@ -110,9 +111,24 @@ void HydraEngine::applyMacroTargets() noexcept
         auto& voice = voices[index];
 
         voice.amplitude.setTargetValue (packet.amplitudes[index]);
-        voice.morph.setTargetValue (packet.morphStates[index]);
+        voice.morph.setTargetValue (packet.morphTargets[index]);
         voice.panL.setTargetValue (packet.panningPairs[index].first);
         voice.panR.setTargetValue (packet.panningPairs[index].second);
+    }
+
+    if (fundamentalFreq > 0.0f)
+        updateOscillatorTuning (true);
+}
+
+void HydraEngine::updateOscillatorTuning (bool glidePitch) noexcept
+{
+    for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
+    {
+        const auto index = static_cast<size_t> (partialIndex);
+        const auto harmonicFrequency =
+            static_cast<double> (fundamentalFreq * frequencyMultipliers[index]);
+
+        oscillators[index].setFrequency (harmonicFrequency, glidePitch);
     }
 }
 
@@ -121,22 +137,16 @@ void HydraEngine::retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch)
     const auto fundamentalHz = midiNoteToFrequency (midiNoteNumber);
     fundamentalFreq = static_cast<float> (fundamentalHz);
 
-    for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
+    if (! glidePitch)
     {
-        const auto index = static_cast<size_t> (partialIndex);
-        const auto harmonic = static_cast<double> (partialIndex + 1);
-        const auto harmonicFrequency = fundamentalHz * harmonic;
-
-        if (glidePitch)
+        for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
         {
-            oscillators[index].setFrequency (harmonicFrequency, true);
-        }
-        else
-        {
+            const auto index = static_cast<size_t> (partialIndex);
             oscillators[index].setPhase (static_cast<double> (juce::MathConstants<float>::twoPi / primes[index]));
-            oscillators[index].setFrequency (harmonicFrequency, false);
         }
     }
+
+    updateOscillatorTuning (glidePitch);
 }
 
 void HydraEngine::noteOn (int midiNoteNumber, float velocity)
@@ -249,7 +259,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             const auto panL = voice.panL.getNextValue();
             const auto panR = voice.panR.getNextValue();
 
-            const auto fn = fundamentalFreq * static_cast<float> (partialIndex + 1);
+            const auto fn = fundamentalFreq * frequencyMultipliers[index];
             const auto damping = (fn <= fc) ? 1.0f : std::exp (-(fn - fc) * spectralDampingS);
 
             const auto oscillated = oscillator.evaluateSample (morph);

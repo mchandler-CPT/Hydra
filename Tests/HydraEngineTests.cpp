@@ -324,24 +324,43 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         };
 
         REQUIRE (packet.panningPairs[1].first > packet.panningPairs[1].second);
-        REQUIRE (packet.panningPairs[2].first < packet.panningPairs[2].second);
+        REQUIRE (packet.panningPairs[2].first > packet.panningPairs[2].second);
+        REQUIRE (packet.panningPairs[4].first < packet.panningPairs[4].second);
         REQUIRE (stereoSpread (packet.panningPairs[6]) > stereoSpread (packet.panningPairs[1]));
     }
 
-    SECTION ("Depth gates girth-driven morph spread")
+    SECTION ("Depth gates girth-driven atmospheric crush spread")
     {
         const auto silentDepth = mapper.computeTargets (0.0f, 1.0f);
 
-        for (const auto morph : silentDepth.morphStates)
-            REQUIRE (morph == Catch::Approx (0.0f).margin (1.0e-6f));
+        REQUIRE (silentDepth.morphTargets[0] == Catch::Approx (0.0f).margin (1.0e-6f));
+        REQUIRE (silentDepth.morphTargets[2] == Catch::Approx (2.0f).margin (0.001f));
+        REQUIRE (silentDepth.morphTargets[6] == Catch::Approx (2.0f).margin (0.001f));
     }
 
-    SECTION ("Full-scale XY maps morph ladder across partials")
+    SECTION ("Full-scale XY assigns tri-group morph roles")
     {
         const auto fullScale = mapper.computeTargets (1.0f, 1.0f);
 
-        REQUIRE (fullScale.morphStates[0] == Catch::Approx (2.0f).margin (0.001f));
-        REQUIRE (fullScale.morphStates[6] == Catch::Approx (3.0f).margin (0.001f));
+        REQUIRE (fullScale.morphTargets[0] == Catch::Approx (0.0f).margin (0.001f));
+        REQUIRE (fullScale.morphTargets[1] == Catch::Approx (2.0f).margin (0.001f));
+        REQUIRE (fullScale.morphTargets[3] == Catch::Approx (2.0f).margin (0.001f));
+        REQUIRE (fullScale.morphTargets[5] == Catch::Approx (2.0f).margin (0.001f));
+        REQUIRE (fullScale.morphTargets[2] == Catch::Approx (3.0f).margin (0.001f));
+        REQUIRE (fullScale.morphTargets[6] == Catch::Approx (3.0f).margin (0.001f));
+    }
+
+    SECTION ("Tri-group frequency multipliers diverge with girth")
+    {
+        const auto fullScale = mapper.computeTargets (1.0f, 1.0f);
+
+        REQUIRE (fullScale.frequencyMultipliers[0] == Catch::Approx (1.0f).margin (0.001f));
+        REQUIRE (fullScale.frequencyMultipliers[1] == Catch::Approx (2.0f).margin (0.001f));
+        REQUIRE (fullScale.frequencyMultipliers[3] == Catch::Approx (4.0f).margin (0.001f));
+        REQUIRE (fullScale.frequencyMultipliers[5] == Catch::Approx (6.0f).margin (0.001f));
+        REQUIRE (fullScale.frequencyMultipliers[2] == Catch::Approx (1.98f).margin (0.01f));
+        REQUIRE (fullScale.frequencyMultipliers[4] == Catch::Approx (5.039f).margin (0.01f));
+        REQUIRE (fullScale.frequencyMultipliers[6] == Catch::Approx (8.0f).margin (0.01f));
     }
 }
 

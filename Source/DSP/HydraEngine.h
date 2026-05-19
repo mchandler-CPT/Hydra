@@ -66,6 +66,7 @@ private:
 
     static double midiNoteToFrequency (int midiNoteNumber) noexcept;
     void applyMacroTargets() noexcept;
+    void updateOscillatorTuning (bool glidePitch) noexcept;
     void retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept;
     void clearAllDelayLines() noexcept;
 
@@ -76,6 +77,7 @@ private:
     juce::LinearSmoothedValue<float> smoothedCutoffHz;
     float depth = 0.0f;
     float girth = 0.0f;
+    std::array<float, numPartials> frequencyMultipliers { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
     float noteVelocity = 0.0f;
     float voiceAmplitude = 0.0f;
     bool noteIsActive = false;
