@@ -53,9 +53,16 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth)
         else
         {
             const auto standardHarmonic = static_cast<float> (n + 1);
-            const auto targetDetune = (n == 2) ? 1.98f : ((n == 4) ? 5.039f : 8.00f);
-            packet.frequencyMultipliers[index] =
-                standardHarmonic + effectiveGirth * (targetDetune - standardHarmonic);
+            auto microOffset = 0.0f;
+
+            if (n == 2)
+                microOffset = Y * 0.015f;
+            else if (n == 4)
+                microOffset = Y * -0.018f;
+            else if (n == 6)
+                microOffset = Y * 0.045f;
+
+            packet.frequencyMultipliers[index] = standardHarmonic + microOffset;
             packet.morphTargets[index] = 2.0f + effectiveGirth;
 
             const auto spread = effectiveGirth;

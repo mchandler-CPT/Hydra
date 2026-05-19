@@ -350,7 +350,7 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         REQUIRE (fullScale.morphTargets[6] == Catch::Approx (3.0f).margin (0.001f));
     }
 
-    SECTION ("Tri-group frequency multipliers diverge with girth")
+    SECTION ("Tri-group frequency multipliers use micro-cents swarm detune")
     {
         const auto fullScale = mapper.computeTargets (1.0f, 1.0f);
 
@@ -358,9 +358,9 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         REQUIRE (fullScale.frequencyMultipliers[1] == Catch::Approx (2.0f).margin (0.001f));
         REQUIRE (fullScale.frequencyMultipliers[3] == Catch::Approx (4.0f).margin (0.001f));
         REQUIRE (fullScale.frequencyMultipliers[5] == Catch::Approx (6.0f).margin (0.001f));
-        REQUIRE (fullScale.frequencyMultipliers[2] == Catch::Approx (1.98f).margin (0.01f));
-        REQUIRE (fullScale.frequencyMultipliers[4] == Catch::Approx (5.039f).margin (0.01f));
-        REQUIRE (fullScale.frequencyMultipliers[6] == Catch::Approx (8.0f).margin (0.01f));
+        REQUIRE (fullScale.frequencyMultipliers[2] == Catch::Approx (3.015f).margin (0.001f));
+        REQUIRE (fullScale.frequencyMultipliers[4] == Catch::Approx (4.982f).margin (0.001f));
+        REQUIRE (fullScale.frequencyMultipliers[6] == Catch::Approx (7.045f).margin (0.001f));
     }
 }
 
