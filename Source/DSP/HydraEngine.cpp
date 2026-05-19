@@ -87,6 +87,7 @@ void HydraEngine::reset() noexcept
     noteVelocity = 0.0f;
     lastEnvelopeGain = 0.0f;
     fundamentalFreq = 0.0f;
+    samplesSinceNoteOn = 0;
 
     adsr.reset();
 
@@ -188,6 +189,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     noteVelocity = clampedVelocity;
     isKeyHeld = true;
     noteIsActive = true;
+    samplesSinceNoteOn = 0;
 
     adsr.noteOn();
     applyMacroTargets();
@@ -226,7 +228,13 @@ void HydraEngine::setEnvelopeParameters (float attack, float decay, float sustai
     params.decay = juce::jmax (0.01f, decay);
     params.sustain = juce::jlimit (0.0f, 1.0f, sustain);
     params.release = juce::jmax (0.01f, release);
+    baseAttackSeconds = params.attack;
     adsr.setParameters (params);
+}
+
+void HydraEngine::setEnvWarp (float newEnvWarp) noexcept
+{
+    envWarp = juce::jlimit (0.0f, 1.0f, newEnvWarp);
 }
 
 void HydraEngine::setDepth (float newDepth) noexcept
@@ -282,12 +290,25 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             const auto panL = voice.panL.getNextValue();
             const auto panR = voice.panR.getNextValue();
 
+            const auto partialAttackSeconds =
+                baseAttackSeconds + (envWarp * 0.01f * static_cast<float> (partialIndex));
+            const auto partialAttackSamples = partialAttackSeconds * static_cast<float> (sampleRate);
+
+            auto phaseIn = 1.0f;
+
+            if (partialAttackSamples > 0.0f)
+            {
+                phaseIn = juce::jlimit (0.0f,
+                                        1.0f,
+                                        static_cast<float> (samplesSinceNoteOn) / partialAttackSamples);
+            }
+
             const auto fn = fundamentalFreq * frequencyMultipliers[index];
             const auto damping = (fn <= fc) ? 1.0f : std::exp (-(fn - fc) * spectralDampingS);
 
             const auto oscillated = oscillator.evaluateSample (morph);
             const auto delayed = voice.processDelaySample (oscillated);
-            const auto partialSample = delayed * amplitude * damping;
+            const auto partialSample = delayed * amplitude * phaseIn * damping;
             partialSamplesLeft[index] = partialSample * panL;
             partialSamplesRight[index] = partialSample * panR;
 
@@ -298,6 +319,8 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         leftChannel[sampleIndex] = saturated.first * lastEnvelopeGain;
         rightChannel[sampleIndex] = saturated.second * lastEnvelopeGain;
+
+        ++samplesSinceNoteOn;
     }
 
     phaseDisperser.processBlock (leftChannel, rightChannel, numSamples);
@@ -306,6 +329,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
     {
         noteIsActive = false;
         noteVelocity = 0.0f;
+        samplesSinceNoteOn = 0;
         numNotesInStack = 0;
         noteStack.fill (0);
         isKeyHeld = false;

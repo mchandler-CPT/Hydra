@@ -32,6 +32,7 @@ private:
     BoutiqueLookAndFeel customLookAndFeel;
 
     XyExplorer xyExplorer;
+    juce::GroupComponent envelopeControlGroup;
 
     juce::Slider harmonySlider;
     juce::Slider filterCutoffSlider;
@@ -48,16 +49,19 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterResAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 
+    juce::Slider envWarpSlider;
     juce::Slider attackSlider;
     juce::Slider decaySlider;
     juce::Slider sustainSlider;
     juce::Slider releaseSlider;
 
+    juce::Label envWarpLabel;
     juce::Label attackLabel;
     juce::Label decayLabel;
     juce::Label sustainLabel;
     juce::Label releaseLabel;
 
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> envWarpAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attackAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> decayAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sustainAttachment;

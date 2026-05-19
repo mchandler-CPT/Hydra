@@ -13,11 +13,16 @@ constexpr int kCutoffTextBoxHeight = 18;
 constexpr int kControlColumnBottomInset = 22;
 constexpr int kRotaryBodyHeight = 84;
 constexpr int kRotarySliderWithReadoutHeight = kRotaryBodyHeight + kCutoffTextBoxHeight;
-constexpr int kKnobRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + kControlColumnBottomInset;
+constexpr int kTopKnobRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + kControlColumnBottomInset;
+constexpr int kBottomKnobRowHeight = kLabelBandHeight + kRotaryBodyHeight + kControlColumnBottomInset;
+constexpr int kPanelHorizontalMargin = 10;
+constexpr int kPanelBottomMargin = 10;
 constexpr int kXyPadY = 15;
 constexpr int kXyPadSize = 220;
 constexpr int kXyPadRightMargin = 10;
 constexpr int kBottomKnobRowY = kXyPadY + kXyPadSize + 8;
+constexpr int kEnvWarpColumnX = 15;
+constexpr int kEnvelopeGroupPadding = 6;
 constexpr int kHarmonyColumnX = 15 + kXyPadSize + kXyPadRightMargin;
 constexpr int kCutoffColumnX = kHarmonyColumnX + kColumnWidth;
 constexpr int kResColumnX = kCutoffColumnX + kColumnWidth;
@@ -37,11 +42,17 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     addAndMakeVisible (keyboardComponent);
     addAndMakeVisible (xyExplorer);
 
+    envelopeControlGroup.setText ("ENVELOPE CONTROL");
+    envelopeControlGroup.setColour (juce::GroupComponent::outlineColourId, juce::Colour (0xff6a6560));
+    envelopeControlGroup.setColour (juce::GroupComponent::textColourId, juce::Colour (kMutedLabelColour));
+    addAndMakeVisible (envelopeControlGroup);
+
     configureRotaryKnob (harmonySlider, harmonyLabel, "HARMONY", false);
     configureRotaryKnob (filterCutoffSlider, filterCutoffLabel, "FILTER CUTOFF", true, " Hz");
     configureRotaryKnob (filterResSlider, filterResLabel, "RESONANCE", true);
     configureRotaryKnob (gainSlider, gainLabel, "MASTER GAIN", false);
 
+    configureAdsrKnob (envWarpSlider, envWarpLabel, "ENV WARP");
     configureAdsrKnob (attackSlider, attackLabel, "ATTACK");
     configureAdsrKnob (decaySlider, decayLabel, "DECAY");
     configureAdsrKnob (sustainSlider, sustainLabel, "SUSTAIN");
@@ -62,6 +73,7 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     filterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "cutoff", filterCutoffSlider);
     filterResAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "res", filterResSlider);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "gain", gainSlider);
+    envWarpAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "envWarp", envWarpSlider);
     attackAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "attack", attackSlider);
     decayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "decay", decaySlider);
     sustainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "sustain", sustainSlider);
@@ -139,8 +151,18 @@ void HydraAudioProcessorEditor::resized()
     xyExplorer.setBounds (15, kXyPadY, kXyPadSize, kXyPadSize);
 
     auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
-    const auto topKnobRow = controlPanel.withHeight (kKnobRowHeight);
-    const auto bottomKnobRow = controlPanel.withY (kBottomKnobRowY).withHeight (kKnobRowHeight);
+    const auto topKnobRow = controlPanel.withHeight (kTopKnobRowHeight);
+    const auto bottomKnobRow = controlPanel.withY (kBottomKnobRowY).withHeight (kBottomKnobRowHeight);
+
+    const auto envelopeGroupTop = kBottomKnobRowY - kEnvelopeGroupPadding;
+    const auto envelopeGroupBottom = juce::jmin (kBottomKnobRowY + kBottomKnobRowHeight + kEnvelopeGroupPadding,
+                                                 kControlPanelHeight - kPanelBottomMargin);
+    const auto envelopeGroupBounds = juce::Rectangle<int>::leftTopRightBottom (kPanelHorizontalMargin,
+                                                                               envelopeGroupTop,
+                                                                               kEditorWidth - kPanelHorizontalMargin,
+                                                                               envelopeGroupBottom);
+    envelopeControlGroup.setBounds (envelopeGroupBounds);
+    envelopeControlGroup.toBack();
 
     const auto placeKnobColumn = [] (juce::Rectangle<int> rowBand,
                                      int x,
@@ -159,6 +181,7 @@ void HydraAudioProcessorEditor::resized()
     placeKnobColumn (topKnobRow, kResColumnX, filterResSlider, filterResLabel, kRotarySliderWithReadoutHeight);
     placeKnobColumn (topKnobRow, kGainColumnX, gainSlider, gainLabel, kRotaryBodyHeight);
 
+    placeKnobColumn (bottomKnobRow, kEnvWarpColumnX, envWarpSlider, envWarpLabel, kRotaryBodyHeight);
     placeKnobColumn (bottomKnobRow, kHarmonyColumnX, attackSlider, attackLabel, kRotaryBodyHeight);
     placeKnobColumn (bottomKnobRow, kCutoffColumnX, decaySlider, decayLabel, kRotaryBodyHeight);
     placeKnobColumn (bottomKnobRow, kResColumnX, sustainSlider, sustainLabel, kRotaryBodyHeight);

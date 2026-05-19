@@ -84,6 +84,7 @@ private:
     std::atomic<float>* decayParam { nullptr };
     std::atomic<float>* sustainParam { nullptr };
     std::atomic<float>* releaseParam { nullptr };
+    std::atomic<float>* envWarpParam { nullptr };
 
     double currentSampleRate = 44100.0;
     double oversampledSampleRate = 44100.0;

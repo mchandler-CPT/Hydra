@@ -13,6 +13,7 @@ constexpr const char* kAttackParamId = "attack";
 constexpr const char* kDecayParamId = "decay";
 constexpr const char* kSustainParamId = "sustain";
 constexpr const char* kReleaseParamId = "release";
+constexpr const char* kEnvWarpParamId = "envWarp";
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
@@ -62,7 +63,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kReleaseParamId, 1 },
                                                      "Release",
                                                      releaseRange,
-                                                     0.5f)
+                                                     0.5f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kEnvWarpParamId, 1 },
+                                                     "Env Warp",
+                                                     juce::NormalisableRange<float> { 0.0f, 1.0f },
+                                                     0.0f)
     };
 }
 
@@ -88,6 +93,7 @@ HydraAudioProcessor::HydraAudioProcessor()
     decayParam = apvts.getRawParameterValue (kDecayParamId);
     sustainParam = apvts.getRawParameterValue (kSustainParamId);
     releaseParam = apvts.getRawParameterValue (kReleaseParamId);
+    envWarpParam = apvts.getRawParameterValue (kEnvWarpParamId);
 }
 
 HydraAudioProcessor::~HydraAudioProcessor() {}
@@ -150,6 +156,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
                                        decayParam->load(),
                                        sustainParam->load(),
                                        releaseParam->load());
+    hydraEngine.setEnvWarp (envWarpParam->load());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
 

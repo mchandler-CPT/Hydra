@@ -57,6 +57,7 @@ public:
     void setHarmony (float harmony) noexcept;
     void setFilterCutoff (float cutoffHz) noexcept;
     void setEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept;
+    void setEnvWarp (float envWarp) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
 
@@ -80,10 +81,13 @@ private:
     float depth = 0.0f;
     float girth = 0.0f;
     float harmony = 0.0f;
+    float envWarp = 0.0f;
+    float baseAttackSeconds = 0.1f;
     std::array<float, numPartials> frequencyMultipliers { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
     float noteVelocity = 0.0f;
     float lastEnvelopeGain = 0.0f;
     bool noteIsActive = false;
+    int64_t samplesSinceNoteOn { 0 };
 
     juce::ADSR adsr;
 
