@@ -9,11 +9,18 @@ constexpr const char* kHarmonyParamId = "harmony";
 constexpr const char* kGainParamId = "gain";
 constexpr const char* kCutoffParamId = "cutoff";
 constexpr const char* kResParamId = "res";
+constexpr const char* kAttackParamId = "attack";
+constexpr const char* kDecayParamId = "decay";
+constexpr const char* kSustainParamId = "sustain";
+constexpr const char* kReleaseParamId = "release";
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
 {
     juce::NormalisableRange<float> cutoffRange (20.0f, 20000.0f, 0.0f, 0.2f);
+    juce::NormalisableRange<float> attackRange (0.001f, 5.0f, 0.0f, 0.5f);
+    juce::NormalisableRange<float> decayRange (0.01f, 5.0f, 0.0f, 0.5f);
+    juce::NormalisableRange<float> releaseRange (0.01f, 10.0f, 0.0f, 0.5f);
 
     return {
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kDepthParamId, 1 },
@@ -39,7 +46,23 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kResParamId, 1 },
                                                      "Resonance",
                                                      juce::NormalisableRange<float> { 0.0f, 4.0f },
-                                                     1.0f)
+                                                     1.0f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kAttackParamId, 1 },
+                                                     "Attack",
+                                                     attackRange,
+                                                     0.1f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kDecayParamId, 1 },
+                                                     "Decay",
+                                                     decayRange,
+                                                     0.3f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kSustainParamId, 1 },
+                                                     "Sustain",
+                                                     juce::NormalisableRange<float> { 0.0f, 1.0f },
+                                                     0.8f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kReleaseParamId, 1 },
+                                                     "Release",
+                                                     releaseRange,
+                                                     0.5f)
     };
 }
 
@@ -61,6 +84,10 @@ HydraAudioProcessor::HydraAudioProcessor()
     gainParam = apvts.getRawParameterValue (kGainParamId);
     cutoffParam = apvts.getRawParameterValue (kCutoffParamId);
     resParam = apvts.getRawParameterValue (kResParamId);
+    attackParam = apvts.getRawParameterValue (kAttackParamId);
+    decayParam = apvts.getRawParameterValue (kDecayParamId);
+    sustainParam = apvts.getRawParameterValue (kSustainParamId);
+    releaseParam = apvts.getRawParameterValue (kReleaseParamId);
 }
 
 HydraAudioProcessor::~HydraAudioProcessor() {}
@@ -119,6 +146,10 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     hydraEngine.setGirth (girth);
     hydraEngine.setHarmony (harmony);
     hydraEngine.setFilterCutoff (cutoffParam->load());
+    hydraEngine.setEnvelopeParameters (attackParam->load(),
+                                       decayParam->load(),
+                                       sustainParam->load(),
+                                       releaseParam->load());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
 

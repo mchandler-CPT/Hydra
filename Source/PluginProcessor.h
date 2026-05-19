@@ -31,7 +31,7 @@ public:
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return 0.0; }
+    double getTailLengthSeconds() const override { return 10.0; }
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -80,6 +80,10 @@ private:
     std::atomic<float>* gainParam { nullptr };
     std::atomic<float>* cutoffParam { nullptr };
     std::atomic<float>* resParam { nullptr };
+    std::atomic<float>* attackParam { nullptr };
+    std::atomic<float>* decayParam { nullptr };
+    std::atomic<float>* sustainParam { nullptr };
+    std::atomic<float>* releaseParam { nullptr };
 
     double currentSampleRate = 44100.0;
     double oversampledSampleRate = 44100.0;

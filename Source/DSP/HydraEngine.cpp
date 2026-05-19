@@ -47,6 +47,15 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
     smoothedCutoffHz.reset (sampleRate, smoothingSeconds);
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
 
+    adsr.setSampleRate (sampleRate);
+
+    juce::ADSR::Parameters defaultEnvelope;
+    defaultEnvelope.attack = 0.1f;
+    defaultEnvelope.decay = 0.3f;
+    defaultEnvelope.sustain = 0.8f;
+    defaultEnvelope.release = 0.5f;
+    adsr.setParameters (defaultEnvelope);
+
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
         auto& oscillator = oscillators[static_cast<size_t> (partialIndex)];
@@ -76,8 +85,10 @@ void HydraEngine::reset() noexcept
     noteStack.fill (0);
     isKeyHeld = false;
     noteVelocity = 0.0f;
-    voiceAmplitude = 0.0f;
+    lastEnvelopeGain = 0.0f;
     fundamentalFreq = 0.0f;
+
+    adsr.reset();
 
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
 
@@ -169,16 +180,16 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     }
 
     const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
-    const auto isLegatoTransition = (voiceAmplitude > 0.0f);
+    const auto isLegatoTransition = adsr.isActive();
     const auto activeNote = noteStack[static_cast<size_t> (numNotesInStack - 1)];
 
     retuneOscillatorsForNote (activeNote, isLegatoTransition);
 
     noteVelocity = clampedVelocity;
-    voiceAmplitude = clampedVelocity;
     isKeyHeld = true;
     noteIsActive = true;
 
+    adsr.noteOn();
     applyMacroTargets();
 }
 
@@ -205,6 +216,17 @@ void HydraEngine::noteOff (int midiNoteNumber) noexcept
     }
 
     isKeyHeld = false;
+    adsr.noteOff();
+}
+
+void HydraEngine::setEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept
+{
+    juce::ADSR::Parameters params;
+    params.attack = juce::jmax (0.001f, attack);
+    params.decay = juce::jmax (0.01f, decay);
+    params.sustain = juce::jlimit (0.0f, 1.0f, sustain);
+    params.release = juce::jmax (0.01f, release);
+    adsr.setParameters (params);
 }
 
 void HydraEngine::setDepth (float newDepth) noexcept
@@ -234,15 +256,10 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 {
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {
-        if (! isKeyHeld)
-        {
-            voiceAmplitude *= 0.9995f;
+        const auto envelopeGain = adsr.getNextSample();
+        lastEnvelopeGain = envelopeGain * noteVelocity;
 
-            if (voiceAmplitude < 0.001f)
-                voiceAmplitude = 0.0f;
-        }
-
-        if (voiceAmplitude == 0.0f)
+        if (! adsr.isActive())
         {
             leftChannel[sampleIndex] = 0.0f;
             rightChannel[sampleIndex] = 0.0f;
@@ -279,13 +296,13 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         const auto saturated = saturator.processSample (partialSamplesLeft, partialSamplesRight);
 
-        leftChannel[sampleIndex] = saturated.first * voiceAmplitude;
-        rightChannel[sampleIndex] = saturated.second * voiceAmplitude;
+        leftChannel[sampleIndex] = saturated.first * lastEnvelopeGain;
+        rightChannel[sampleIndex] = saturated.second * lastEnvelopeGain;
     }
 
     phaseDisperser.processBlock (leftChannel, rightChannel, numSamples);
 
-    if (voiceAmplitude == 0.0f)
+    if (! adsr.isActive())
     {
         noteIsActive = false;
         noteVelocity = 0.0f;

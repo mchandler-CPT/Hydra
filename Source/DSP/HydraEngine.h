@@ -56,10 +56,11 @@ public:
     void setGirth (float girth) noexcept;
     void setHarmony (float harmony) noexcept;
     void setFilterCutoff (float cutoffHz) noexcept;
+    void setEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
 
-    float getVoiceAmplitude() const noexcept { return voiceAmplitude; }
+    float getVoiceAmplitude() const noexcept { return lastEnvelopeGain; }
 
 private:
     static constexpr std::array<float, numPartials> primes { 2.0f, 3.0f, 5.0f, 7.0f, 11.0f, 13.0f, 17.0f };
@@ -81,8 +82,10 @@ private:
     float harmony = 0.0f;
     std::array<float, numPartials> frequencyMultipliers { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
     float noteVelocity = 0.0f;
-    float voiceAmplitude = 0.0f;
+    float lastEnvelopeGain = 0.0f;
     bool noteIsActive = false;
+
+    juce::ADSR adsr;
 
     std::array<int, 16> noteStack {};
     int numNotesInStack = 0;
