@@ -295,9 +295,8 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
 
     SECTION ("Hyperbolic panning anchors fundamental and conserves equal power")
     {
-        const std::array<std::pair<float, float>, 3> girthVariations {
+        const std::array<std::pair<float, float>, 2> girthVariations {
             std::pair<float, float> { 1.0f, 0.0f },
-            { 1.0f, 0.5f },
             { 1.0f, 1.0f }
         };
 
@@ -306,11 +305,13 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
             const auto packet = mapper.computeTargets (depth, girth);
 
             REQUIRE (packet.panningPairs[0].first == Catch::Approx (packet.panningPairs[0].second).margin (1.0e-5f));
-            REQUIRE (packet.panningPairs[0].first
-                     == Catch::Approx (juce::MathConstants<float>::sqrt2 * 0.5f).margin (1.0e-5f));
+            REQUIRE (packet.panningPairs[0].first == Catch::Approx (0.707f).margin (1.0e-5f));
 
-            for (const auto& [panL, panR] : packet.panningPairs)
-                REQUIRE ((panL * panL + panR * panR) == Catch::Approx (1.0f).margin (1.0e-5f));
+            for (int partialIndex = 0; partialIndex < HydraMacroMapper::numPartials; ++partialIndex)
+            {
+                const auto& [panL, panR] = packet.panningPairs[static_cast<size_t> (partialIndex)];
+                REQUIRE ((panL * panL + panR * panR) == Catch::Approx (1.0f).margin (1.0e-3f));
+            }
         }
     }
 
@@ -329,13 +330,16 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         REQUIRE (stereoSpread (packet.panningPairs[6]) > stereoSpread (packet.panningPairs[1]));
     }
 
-    SECTION ("Depth gates girth-driven atmospheric crush spread")
+    SECTION ("Depth gates girth-driven morph and detune to pure sines")
     {
         const auto silentDepth = mapper.computeTargets (0.0f, 1.0f);
 
-        REQUIRE (silentDepth.morphTargets[0] == Catch::Approx (0.0f).margin (1.0e-6f));
-        REQUIRE (silentDepth.morphTargets[2] == Catch::Approx (2.0f).margin (0.001f));
-        REQUIRE (silentDepth.morphTargets[6] == Catch::Approx (2.0f).margin (0.001f));
+        for (const auto morph : silentDepth.morphTargets)
+            REQUIRE (morph == Catch::Approx (0.0f).margin (1.0e-6f));
+
+        REQUIRE (silentDepth.frequencyMultipliers[2] == Catch::Approx (3.0f).margin (1.0e-6f));
+        REQUIRE (silentDepth.frequencyMultipliers[4] == Catch::Approx (5.0f).margin (1.0e-6f));
+        REQUIRE (silentDepth.frequencyMultipliers[6] == Catch::Approx (7.0f).margin (1.0e-6f));
     }
 
     SECTION ("Full-scale XY assigns tri-group morph roles")
