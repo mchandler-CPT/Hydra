@@ -47,6 +47,9 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
     smoothedCutoffHz.reset (sampleRate, smoothingSeconds);
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
 
+    smoothedFrequency.reset (sampleRate, 0.003);
+    smoothedFrequency.setCurrentAndTargetValue (0.0f);
+
     adsr.setSampleRate (sampleRate);
 
     juce::ADSR::Parameters defaultEnvelope;
@@ -92,6 +95,7 @@ void HydraEngine::reset() noexcept
     adsr.reset();
 
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
+    smoothedFrequency.setCurrentAndTargetValue (0.0f);
 
     phaseDisperser.reset();
 
@@ -128,17 +132,17 @@ void HydraEngine::applyMacroTargets() noexcept
         voice.panR.setTargetValue (packet.panningPairs[index].second);
     }
 
-    if (fundamentalFreq > 0.0f)
-        updateOscillatorTuning (true);
 }
 
 void HydraEngine::updateOscillatorTuning (bool glidePitch) noexcept
 {
+    const auto baseFrequency = smoothedFrequency.getCurrentValue();
+
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
         const auto index = static_cast<size_t> (partialIndex);
         const auto harmonicFrequency =
-            static_cast<double> (fundamentalFreq * frequencyMultipliers[index]);
+            static_cast<double> (baseFrequency * frequencyMultipliers[index]);
 
         oscillators[index].setFrequency (harmonicFrequency, glidePitch);
     }
@@ -146,8 +150,13 @@ void HydraEngine::updateOscillatorTuning (bool glidePitch) noexcept
 
 void HydraEngine::retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept
 {
-    fundamentalFreq = static_cast<float> (midiNoteToFrequency (midiNoteNumber));
-    updateOscillatorTuning (glidePitch);
+    const auto targetFreq = static_cast<float> (midiNoteToFrequency (midiNoteNumber));
+    fundamentalFreq = targetFreq;
+
+    if (glidePitch)
+        smoothedFrequency.setTargetValue (targetFreq);
+    else
+        smoothedFrequency.setCurrentAndTargetValue (targetFreq);
 }
 
 void HydraEngine::noteOn (int midiNoteNumber, float velocity)
@@ -172,26 +181,28 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
     const auto isNoteAlreadyPlaying = adsr.isActive();
     const auto activeNote = noteStack[static_cast<size_t> (numNotesInStack - 1)];
+    const auto targetFreq = static_cast<float> (midiNoteToFrequency (activeNote));
 
     noteVelocity = clampedVelocity;
     isKeyHeld = true;
     noteIsActive = true;
+    fundamentalFreq = targetFreq;
 
-    retuneOscillatorsForNote (activeNote, isNoteAlreadyPlaying);
+    adsr.noteOn();
 
     if (! isNoteAlreadyPlaying)
     {
         samplesSinceNoteOn = 0;
+        smoothedFrequency.setCurrentAndTargetValue (targetFreq);
 
         for (auto& oscillator : oscillators)
             oscillator.setPhase (0.0);
     }
     else
     {
-        samplesSinceNoteOn = 0;
+        smoothedFrequency.setTargetValue (targetFreq);
     }
 
-    adsr.noteOn();
     applyMacroTargets();
 }
 
@@ -275,6 +286,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         }
 
         const auto fc = smoothedCutoffHz.getNextValue();
+        const auto currentBaseFreq = smoothedFrequency.getNextValue();
 
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesLeft {};
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesRight {};
@@ -303,7 +315,10 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
                                         static_cast<float> (samplesSinceNoteOn) / partialAttackSamples);
             }
 
-            const auto fn = fundamentalFreq * frequencyMultipliers[index];
+            const auto fn = currentBaseFreq * frequencyMultipliers[index];
+            const auto harmonicFrequency = static_cast<double> (fn);
+            oscillator.setFrequency (harmonicFrequency, false);
+
             const auto damping = (fn <= fc) ? 1.0f : std::exp (-(fn - fc) * spectralDampingS);
 
             const auto oscillated = oscillator.evaluateSample (morph);
@@ -330,6 +345,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         noteIsActive = false;
         noteVelocity = 0.0f;
         samplesSinceNoteOn = 0;
+        smoothedFrequency.setCurrentAndTargetValue (0.0f);
         numNotesInStack = 0;
         noteStack.fill (0);
         isKeyHeld = false;

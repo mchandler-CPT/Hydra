@@ -78,6 +78,7 @@ private:
     double sampleRate = 44100.0;
     float fundamentalFreq = 0.0f;
     juce::LinearSmoothedValue<float> smoothedCutoffHz;
+    juce::LinearSmoothedValue<float> smoothedFrequency;
     float depth = 0.0f;
     float girth = 0.0f;
     float harmony = 0.0f;
