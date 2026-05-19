@@ -357,7 +357,7 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         REQUIRE (fullScale.morphTargets[6] == Catch::Approx (3.0f).margin (0.001f));
     }
 
-    SECTION ("Tri-group frequency multipliers use micro-cents swarm detune and stratosphere lift")
+    SECTION ("Tri-group frequency multipliers use harmony scaffold and micro-cents detune")
     {
         const auto fullScale = mapper.computeTargets (1.0f, 1.0f, 0.0f);
 
@@ -366,8 +366,8 @@ TEST_CASE ("HydraMacroMapper Energy Conservation", "[HydraMacroMapper]")
         REQUIRE (fullScale.frequencyMultipliers[3] == Catch::Approx (4.0f).margin (0.001f));
         REQUIRE (fullScale.frequencyMultipliers[5] == Catch::Approx (6.0f).margin (0.001f));
         REQUIRE (fullScale.frequencyMultipliers[2] == Catch::Approx (3.015f).margin (0.001f));
-        REQUIRE (fullScale.frequencyMultipliers[4] == Catch::Approx (7.473f).margin (0.001f));
-        REQUIRE (fullScale.frequencyMultipliers[6] == Catch::Approx (24.6575f).margin (0.001f));
+        REQUIRE (fullScale.frequencyMultipliers[4] == Catch::Approx (4.982f).margin (0.001f));
+        REQUIRE (fullScale.frequencyMultipliers[6] == Catch::Approx (7.045f).margin (0.001f));
     }
 }
 

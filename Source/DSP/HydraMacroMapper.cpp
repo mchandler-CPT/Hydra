@@ -83,16 +83,7 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth,
             else if (n == 6)
                 microOffset = Y * 0.045f;
 
-            const auto detunedScaffold = baseHarmonic + microOffset;
-
-            auto stratosphereScale = 1.0f;
-
-            if (n == 4)
-                stratosphereScale = 1.0f + (Y * 0.5f);
-            else if (n == 6)
-                stratosphereScale = 1.0f + (Y * 2.5f);
-
-            packet.frequencyMultipliers[index] = detunedScaffold * stratosphereScale;
+            packet.frequencyMultipliers[index] = baseHarmonic + microOffset;
 
             const auto leftEdge = (n == 2 || n == 6) ? 1.0f : 0.0f;
             const auto rightEdge = (n == 4) ? 1.0f : 0.0f;
