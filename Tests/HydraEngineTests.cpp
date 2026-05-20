@@ -62,6 +62,14 @@ float computePeak (const std::vector<float>& buffer, int startIndex, int numSamp
         peak = std::max (peak, std::abs (buffer[static_cast<size_t> (startIndex + i)]));
     return peak;
 }
+
+bool bufferContainsNonFinite (const std::vector<float>& buffer)
+{
+    for (const auto sample : buffer)
+        if (! std::isfinite (sample))
+            return true;
+    return false;
+}
 } // namespace
 
 TEST_CASE ("HydraOscillator Waveshaping Integrity", "[HydraOscillator]")
@@ -397,6 +405,32 @@ TEST_CASE ("HydraEngine Temporal Staggering Verification", "[HydraEngine]")
     delayLine.processDelaySample (3.0f);
     delayLine.processDelaySample (4.0f);
     REQUIRE (delayLine.processDelaySample (5.0f) == Catch::Approx (1.0f).margin (1.0e-6f));
+}
+
+TEST_CASE ("HydraEngine A-note rendering stays finite", "[HydraEngine]")
+{
+    auto engine = makePreparedEngine();
+    engine.setDepth (1.0f);
+    engine.setGirth (0.0f);
+    engine.setScaleMorph (1.0f);
+
+    const std::array<int, 4> aNotes { 45, 57, 69, 81 };
+
+    for (const auto midiNote : aNotes)
+    {
+        engine.reset();
+        engine.setDepth (1.0f);
+        engine.noteOn (midiNote, 1.0f);
+
+        std::vector<float> left (static_cast<size_t> (kSampleRate * 0.25), 0.0f);
+        std::vector<float> right (static_cast<size_t> (kSampleRate * 0.25), 0.0f);
+        engine.renderBlock (left.data(), right.data(), static_cast<int> (left.size()));
+
+        REQUIRE_FALSE (bufferContainsNonFinite (left));
+        REQUIRE_FALSE (bufferContainsNonFinite (right));
+        REQUIRE (computePeak (left, 0, static_cast<int> (left.size())) < 2.0f);
+        REQUIRE (computePeak (right, 0, static_cast<int> (right.size())) < 2.0f);
+    }
 }
 
 TEST_CASE ("HydraEngine Voice Lifecycle", "[HydraEngine]")

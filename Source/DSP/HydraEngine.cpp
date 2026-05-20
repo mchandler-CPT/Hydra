@@ -2,15 +2,30 @@
 
 #include <cmath>
 
-double HydraEngine::midiNoteToFrequency (int midiNoteNumber) noexcept
+float HydraEngine::sanitizeTargetFrequency (float frequencyHz) const noexcept
 {
-    return 440.0 * std::pow (2.0, (midiNoteNumber - 69) / 12.0);
+    if (! std::isfinite (frequencyHz))
+        return 440.0f;
+
+    return juce::jlimit (8.0f, 20000.0f, frequencyHz);
+}
+
+float HydraEngine::midiNoteToFrequency (int midiNoteNumber) const noexcept
+{
+    if (midiNoteNumber == 69)
+        return 440.0f;
+
+    const auto morphValue = scaleMorph;
+    const auto tuningDivisor = 12.0f + (morphValue * 12.0f);
+    const auto morphedFrequency = 440.0f * std::pow (2.0f,
+                                                     (static_cast<float> (midiNoteNumber) - 69.0f) / tuningDivisor);
+    return sanitizeTargetFrequency (morphedFrequency);
 }
 
 void HydraPartialVoice::configureDelay (double oversampledSampleRate, int partialIndex) noexcept
 {
     static constexpr std::array<float, 7> delayTimesVsIndex {
-        0.0f, 0.0021f, 0.0044f, 0.0068f, 0.0093f, 0.00119f, 0.0145f
+        0.0f, 0.0021f, 0.0044f, 0.0068f, 0.0093f, 0.0119f, 0.0145f
     };
 
     if (partialIndex <= 0)
@@ -150,7 +165,7 @@ void HydraEngine::updateOscillatorTuning (bool glidePitch) noexcept
 
 void HydraEngine::retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept
 {
-    const auto targetFreq = static_cast<float> (midiNoteToFrequency (midiNoteNumber));
+    const auto targetFreq = midiNoteToFrequency (midiNoteNumber);
     fundamentalFreq = targetFreq;
 
     if (glidePitch)
@@ -181,7 +196,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
     const auto isNoteAlreadyPlaying = adsr.isActive();
     const auto activeNote = noteStack[static_cast<size_t> (numNotesInStack - 1)];
-    const auto targetFreq = static_cast<float> (midiNoteToFrequency (activeNote));
+    const auto targetFreq = midiNoteToFrequency (activeNote);
 
     noteVelocity = clampedVelocity;
     isKeyHeld = true;
@@ -257,6 +272,11 @@ void HydraEngine::setEgrAmount (float newEgrAmount) noexcept
 void HydraEngine::setGlideTime (float newGlideTimeSeconds) noexcept
 {
     glideTimeSeconds = juce::jlimit (0.0f, 2.0f, newGlideTimeSeconds);
+}
+
+void HydraEngine::setScaleMorph (float newScaleMorph) noexcept
+{
+    scaleMorph = juce::jlimit (0.0f, 1.0f, newScaleMorph);
 }
 
 void HydraEngine::updateFrequencyGlideSmoothing() noexcept
@@ -373,7 +393,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
                                         static_cast<float> (samplesSinceNoteOn) / partialAttackSamples);
             }
 
-            const auto fn = currentBaseFreq * frequencyMultipliers[index];
+            const auto fn = sanitizeTargetFrequency (currentBaseFreq * frequencyMultipliers[index]);
             const auto harmonicFrequency = static_cast<double> (fn);
             oscillator.setFrequency (harmonicFrequency, false);
 

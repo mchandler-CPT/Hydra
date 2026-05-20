@@ -20,6 +20,7 @@ constexpr const char* kFilterReleaseParamId = "filterRelease";
 constexpr const char* kEgrAmountParamId = "egrAmount";
 constexpr const char* kEnvWarpParamId = "envWarp";
 constexpr const char* kGlideTimeParamId = "glideTime";
+constexpr const char* kScaleMorphParamId = "scaleMorph";
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
@@ -97,7 +98,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kGlideTimeParamId, 1 },
                                                      "Glide Time",
                                                      juce::NormalisableRange<float> { 0.0f, 2.0f, 0.001f },
-                                                     0.05f)
+                                                     0.05f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kScaleMorphParamId, 1 },
+                                                     "Scale Morph",
+                                                     juce::NormalisableRange<float> { 0.0f, 1.0f, 0.01f },
+                                                     0.0f)
     };
 }
 
@@ -130,6 +135,7 @@ HydraAudioProcessor::HydraAudioProcessor()
     egrAmountParam = apvts.getRawParameterValue (kEgrAmountParamId);
     envWarpParam = apvts.getRawParameterValue (kEnvWarpParamId);
     glideTimeParam = apvts.getRawParameterValue (kGlideTimeParamId);
+    scaleMorphParam = apvts.getRawParameterValue (kScaleMorphParamId);
 }
 
 HydraAudioProcessor::~HydraAudioProcessor() {}
@@ -199,6 +205,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     hydraEngine.setEgrAmount (egrAmountParam->load());
     hydraEngine.setEnvWarp (envWarpParam->load());
     hydraEngine.setGlideTime (glideTimeParam->load());
+    hydraEngine.setScaleMorph (scaleMorphParam->load());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
 

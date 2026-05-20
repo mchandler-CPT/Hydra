@@ -62,6 +62,7 @@ public:
     void setEgrAmount (float newEgrAmount) noexcept;
     void setEnvWarp (float envWarp) noexcept;
     void setGlideTime (float glideTimeSeconds) noexcept;
+    void setScaleMorph (float scaleMorph) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
     const float* getFilterCutoffBuffer() const noexcept { return filterCutoffBuffer.empty() ? nullptr : filterCutoffBuffer.data(); }
@@ -72,7 +73,8 @@ private:
     static constexpr std::array<float, numPartials> primes { 2.0f, 3.0f, 5.0f, 7.0f, 11.0f, 13.0f, 17.0f };
     static constexpr double twoPi = juce::MathConstants<double>::twoPi;
 
-    static double midiNoteToFrequency (int midiNoteNumber) noexcept;
+    float midiNoteToFrequency (int midiNoteNumber) const noexcept;
+    float sanitizeTargetFrequency (float frequencyHz) const noexcept;
     void applyMacroTargets() noexcept;
     void updateOscillatorTuning (bool glidePitch) noexcept;
     void retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept;
@@ -92,6 +94,7 @@ private:
     float egrAmount = 0.0f;
     float glideTimeSeconds = 0.05f;
     float appliedGlideTimeSeconds = 0.003f;
+    float scaleMorph = 0.0f;
     juce::ADSR::Parameters baseEnvelopeParameters { 0.1f, 0.3f, 0.8f, 0.5f };
     float baseAttackSeconds = 0.1f;
     juce::ADSR::Parameters baseFilterEnvelopeParameters { 0.1f, 0.3f, 0.7f, 0.5f };

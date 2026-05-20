@@ -43,8 +43,10 @@ float HydraOscillator::interpolateTable (const std::array<float, kWavetableSize 
                                          int indexBase,
                                          float fraction) noexcept
 {
-    const auto baseIndex = static_cast<size_t> (indexBase);
-    return table[baseIndex] + fraction * (table[baseIndex + 1] - table[baseIndex]);
+    const auto wrappedIndex = ((indexBase % kWavetableSize) + kWavetableSize) % kWavetableSize;
+    const auto baseIndex = static_cast<size_t> (wrappedIndex);
+    const auto clampedFraction = juce::jlimit (0.0f, 1.0f, fraction);
+    return table[baseIndex] + clampedFraction * (table[baseIndex + 1] - table[baseIndex]);
 }
 
 void HydraOscillator::prepare (double newSampleRate) noexcept
@@ -72,8 +74,11 @@ void HydraOscillator::advance() noexcept
 {
     currentPhase += phaseIncrement.getNextValue();
 
-    if (currentPhase >= twoPi)
+    while (currentPhase >= twoPi)
         currentPhase -= twoPi;
+
+    while (currentPhase < 0.0)
+        currentPhase += twoPi;
 }
 
 float HydraOscillator::evaluateSample (float morphState) const noexcept
@@ -81,10 +86,19 @@ float HydraOscillator::evaluateSample (float morphState) const noexcept
     const auto& tables = getSharedTables();
     const auto morph = juce::jlimit (kMorphMin, kMorphMax, morphState);
 
-    const auto continuousIndex = static_cast<float> (currentPhase / twoPi)
+    auto wrappedPhase = currentPhase;
+    while (wrappedPhase >= twoPi)
+        wrappedPhase -= twoPi;
+    while (wrappedPhase < 0.0)
+        wrappedPhase += twoPi;
+
+    const auto continuousIndex = static_cast<float> (wrappedPhase / twoPi)
                                * static_cast<float> (kWavetableSize);
-    const auto indexBase = static_cast<int> (continuousIndex) % kWavetableSize;
-    const auto fraction = continuousIndex - static_cast<float> (indexBase);
+    const auto clampedIndex = juce::jlimit (0.0f,
+                                            static_cast<float> (kWavetableSize - 1),
+                                            continuousIndex);
+    const auto indexBase = static_cast<int> (clampedIndex);
+    const auto fraction = clampedIndex - static_cast<float> (indexBase);
 
     const auto sine = interpolateTable (tables.sineTable, indexBase, fraction);
     const auto triangle = interpolateTable (tables.triangleTable, indexBase, fraction);

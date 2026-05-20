@@ -15,6 +15,12 @@ void ZdfLadderFilter::reset() noexcept
 
 float ZdfLadderFilter::processSample (float input, float cutoffHz, float resonance, double sampleRate) noexcept
 {
+    if (! std::isfinite (input))
+        input = 0.0f;
+
+    if (! std::isfinite (cutoffHz))
+        cutoffHz = 20000.0f;
+
     const auto clampedResonance = juce::jlimit (0.0f, 4.0f, resonance);
 
     const auto maxSwing = std::min (600.0f, cutoffHz * 0.75f);
@@ -47,6 +53,6 @@ float ZdfLadderFilter::processSample (float input, float cutoffHz, float resonan
     const auto y4 = s4 + g * v4;
     s4 = y4 + g * v4;
 
-    lastOutput = y4;
-    return y4;
+    lastOutput = std::isfinite (y4) ? y4 : 0.0f;
+    return lastOutput;
 }
