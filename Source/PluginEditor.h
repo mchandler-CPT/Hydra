@@ -64,6 +64,7 @@ private:
     juce::Slider glideSlider;
     juce::Slider scaleMorphSlider;
     juce::Slider kbTrackSlider;
+    juce::Slider overloadSlider;
 
     juce::Label envWarpLabel;
     juce::Label egrAmountLabel;
@@ -78,6 +79,7 @@ private:
     juce::Label glideLabel;
     juce::Label scaleMorphLabel;
     juce::Label kbTrackLabel;
+    juce::Label overloadLabel;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> envWarpAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> egrAmountAttachment;
@@ -92,6 +94,7 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> glideAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> scaleMorphAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> kbTrackAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> overloadAttachment;
 
     juce::MidiKeyboardComponent keyboardComponent;
 

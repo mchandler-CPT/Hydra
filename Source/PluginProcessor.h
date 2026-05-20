@@ -93,6 +93,7 @@ private:
     std::atomic<float>* glideTimeParam { nullptr };
     std::atomic<float>* scaleMorphParam { nullptr };
     std::atomic<float>* kbTrackParam { nullptr };
+    std::atomic<float>* filterOverloadParam { nullptr };
 
     double currentSampleRate = 44100.0;
     double oversampledSampleRate = 44100.0;

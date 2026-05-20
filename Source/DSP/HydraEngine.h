@@ -64,8 +64,10 @@ public:
     void setGlideTime (float glideTimeSeconds) noexcept;
     void setScaleMorph (float scaleMorph) noexcept;
     void setKbTrack (float kbTrack) noexcept;
+    void setFilterOverload (float filterOverload) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
+    void applyFilterOverload (float* leftChannel, float* rightChannel, int numSamples) const noexcept;
     const float* getFilterCutoffBuffer() const noexcept { return filterCutoffBuffer.empty() ? nullptr : filterCutoffBuffer.data(); }
 
     float getVoiceAmplitude() const noexcept { return lastEnvelopeGain; }
@@ -97,7 +99,10 @@ private:
     float appliedGlideTimeSeconds = 0.003f;
     float scaleMorph = 0.0f;
     float kbTrack = 0.0f;
+    float filterOverload = 0.0f;
     int activeMidiNoteNumber = 69;
+
+    static float applyFilterOverloadSample (float sample, float overloadKnob) noexcept;
     juce::ADSR::Parameters baseEnvelopeParameters { 0.1f, 0.3f, 0.8f, 0.5f };
     float baseAttackSeconds = 0.1f;
     juce::ADSR::Parameters baseFilterEnvelopeParameters { 0.1f, 0.3f, 0.7f, 0.5f };

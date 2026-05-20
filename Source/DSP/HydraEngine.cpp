@@ -286,6 +286,40 @@ void HydraEngine::setKbTrack (float newKbTrack) noexcept
     kbTrack = juce::jlimit (0.0f, 1.0f, newKbTrack);
 }
 
+void HydraEngine::setFilterOverload (float newFilterOverload) noexcept
+{
+    filterOverload = juce::jlimit (0.0f, 1.0f, newFilterOverload);
+}
+
+float HydraEngine::applyFilterOverloadSample (float sample, float overloadKnob) noexcept
+{
+    const auto clampedOverload = juce::jlimit (0.0f, 1.0f, overloadKnob);
+
+    if (clampedOverload <= 0.0f)
+        return sample;
+
+    const auto driveFactor = 1.0f + (clampedOverload * 4.0f);
+    const auto drivenSample = sample * driveFactor;
+    const auto saturatedSample = std::tanh (drivenSample);
+    const auto compensationFactor = 1.0f / std::sqrt (driveFactor);
+
+    return saturatedSample * compensationFactor;
+}
+
+void HydraEngine::applyFilterOverload (float* leftChannel, float* rightChannel, int numSamples) const noexcept
+{
+    if (leftChannel == nullptr || numSamples <= 0 || filterOverload <= 0.0f)
+        return;
+
+    for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
+    {
+        leftChannel[sampleIndex] = applyFilterOverloadSample (leftChannel[sampleIndex], filterOverload);
+
+        if (rightChannel != nullptr)
+            rightChannel[sampleIndex] = applyFilterOverloadSample (rightChannel[sampleIndex], filterOverload);
+    }
+}
+
 void HydraEngine::updateFrequencyGlideSmoothing() noexcept
 {
     const auto targetSmoothTime = juce::jmax (0.003f, glideTimeSeconds);

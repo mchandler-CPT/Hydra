@@ -71,6 +71,7 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     configureRotaryKnob (glideSlider, glideLabel, "GLIDE TIME", false);
     configureRotaryKnob (scaleMorphSlider, scaleMorphLabel, "SCALE MORPH", false);
     configureRotaryKnob (kbTrackSlider, kbTrackLabel, "KB TRACKING", false);
+    configureRotaryKnob (overloadSlider, overloadLabel, "OVERLOAD", false);
 
     configureAdsrKnob (envWarpSlider, envWarpLabel, "ENV WARP");
     configureAdsrKnob (egrAmountSlider, egrAmountLabel, "EGR AMOUNT");
@@ -111,6 +112,7 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     glideAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "glideTime", glideSlider);
     scaleMorphAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "scaleMorph", scaleMorphSlider);
     kbTrackAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "kbTrack", kbTrackSlider);
+    overloadAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterOverload", overloadSlider);
 }
 
 HydraAudioProcessorEditor::~HydraAudioProcessorEditor()
@@ -220,6 +222,7 @@ void HydraAudioProcessorEditor::resized()
     placeKnobColumn (utilityKnobRow, kHarmonyColumnX, glideSlider, glideLabel, kRotaryBodyHeight);
     placeKnobColumn (utilityKnobRow, kCutoffColumnX, scaleMorphSlider, scaleMorphLabel, kRotaryBodyHeight);
     placeKnobColumn (utilityKnobRow, kResColumnX, kbTrackSlider, kbTrackLabel, kRotaryBodyHeight);
+    placeKnobColumn (utilityKnobRow, kGainColumnX, overloadSlider, overloadLabel, kRotaryBodyHeight);
 
     auto envelopeArea = envelopeGroupBounds.reduced (10, 16);
     constexpr int kEnvelopeGridColumns = 5;

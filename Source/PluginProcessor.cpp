@@ -22,6 +22,7 @@ constexpr const char* kEnvWarpParamId = "envWarp";
 constexpr const char* kGlideTimeParamId = "glideTime";
 constexpr const char* kScaleMorphParamId = "scaleMorph";
 constexpr const char* kKbTrackParamId = "kbTrack";
+constexpr const char* kFilterOverloadParamId = "filterOverload";
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
@@ -107,6 +108,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kKbTrackParamId, 1 },
                                                      "KB Tracking",
                                                      juce::NormalisableRange<float> { 0.0f, 1.0f, 0.01f },
+                                                     0.0f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kFilterOverloadParamId, 1 },
+                                                     "Overload",
+                                                     juce::NormalisableRange<float> { 0.0f, 1.0f, 0.01f },
                                                      0.0f)
     };
 }
@@ -142,6 +147,7 @@ HydraAudioProcessor::HydraAudioProcessor()
     glideTimeParam = apvts.getRawParameterValue (kGlideTimeParamId);
     scaleMorphParam = apvts.getRawParameterValue (kScaleMorphParamId);
     kbTrackParam = apvts.getRawParameterValue (kKbTrackParamId);
+    filterOverloadParam = apvts.getRawParameterValue (kFilterOverloadParamId);
 }
 
 HydraAudioProcessor::~HydraAudioProcessor() {}
@@ -196,6 +202,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     const auto girth = girthParam->load();
     const auto harmony = harmonyParam->load();
     const auto kbTrack = kbTrackParam->load();
+    const auto filterOverload = filterOverloadParam->load();
 
     hydraEngine.setDepth (depth);
     hydraEngine.setGirth (girth);
@@ -214,6 +221,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     hydraEngine.setGlideTime (glideTimeParam->load());
     hydraEngine.setScaleMorph (scaleMorphParam->load());
     hydraEngine.setKbTrack (kbTrack);
+    hydraEngine.setFilterOverload (filterOverload);
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
 
@@ -259,6 +267,8 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
                                                             oversampledSampleRate);
         }
 
+        hydraEngine.applyFilterOverload (leftChannel, rightChannel, osNumSamples);
+
         if (hydraEngine.getVoiceAmplitude() == 0.0f)
         {
             filterL.reset();
@@ -284,6 +294,8 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
                                                            resonance,
                                                            oversampledSampleRate);
         }
+
+        hydraEngine.applyFilterOverload (leftChannel, nullptr, osNumSamples);
 
         if (hydraEngine.getVoiceAmplitude() == 0.0f)
             filterL.reset();
