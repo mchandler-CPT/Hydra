@@ -13,6 +13,11 @@ constexpr const char* kAttackParamId = "attack";
 constexpr const char* kDecayParamId = "decay";
 constexpr const char* kSustainParamId = "sustain";
 constexpr const char* kReleaseParamId = "release";
+constexpr const char* kFilterAttackParamId = "filterAttack";
+constexpr const char* kFilterDecayParamId = "filterDecay";
+constexpr const char* kFilterSustainParamId = "filterSustain";
+constexpr const char* kFilterReleaseParamId = "filterRelease";
+constexpr const char* kEgrAmountParamId = "egrAmount";
 constexpr const char* kEnvWarpParamId = "envWarp";
 } // namespace
 
@@ -64,6 +69,26 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
                                                      "Release",
                                                      releaseRange,
                                                      0.5f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kFilterAttackParamId, 1 },
+                                                     "Filter Attack",
+                                                     juce::NormalisableRange<float> { 0.001f, 5.0f, 0.0f, 0.5f },
+                                                     0.1f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kFilterDecayParamId, 1 },
+                                                     "Filter Decay",
+                                                     juce::NormalisableRange<float> { 0.001f, 5.0f, 0.0f, 0.5f },
+                                                     0.3f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kFilterSustainParamId, 1 },
+                                                     "Filter Sustain",
+                                                     juce::NormalisableRange<float> { 0.0f, 1.0f },
+                                                     0.7f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kFilterReleaseParamId, 1 },
+                                                     "Filter Release",
+                                                     juce::NormalisableRange<float> { 0.001f, 5.0f, 0.0f, 0.5f },
+                                                     0.5f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kEgrAmountParamId, 1 },
+                                                     "EGR Amount",
+                                                     juce::NormalisableRange<float> { -1.0f, 1.0f, 0.01f },
+                                                     0.5f),
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kEnvWarpParamId, 1 },
                                                      "Env Warp",
                                                      juce::NormalisableRange<float> { 0.0f, 1.0f },
@@ -93,6 +118,11 @@ HydraAudioProcessor::HydraAudioProcessor()
     decayParam = apvts.getRawParameterValue (kDecayParamId);
     sustainParam = apvts.getRawParameterValue (kSustainParamId);
     releaseParam = apvts.getRawParameterValue (kReleaseParamId);
+    filterAttackParam = apvts.getRawParameterValue (kFilterAttackParamId);
+    filterDecayParam = apvts.getRawParameterValue (kFilterDecayParamId);
+    filterSustainParam = apvts.getRawParameterValue (kFilterSustainParamId);
+    filterReleaseParam = apvts.getRawParameterValue (kFilterReleaseParamId);
+    egrAmountParam = apvts.getRawParameterValue (kEgrAmountParamId);
     envWarpParam = apvts.getRawParameterValue (kEnvWarpParamId);
 }
 
@@ -156,6 +186,11 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
                                        decayParam->load(),
                                        sustainParam->load(),
                                        releaseParam->load());
+    hydraEngine.setFilterEnvelopeParameters (filterAttackParam->load(),
+                                             filterDecayParam->load(),
+                                             filterSustainParam->load(),
+                                             filterReleaseParam->load());
+    hydraEngine.setEgrAmount (egrAmountParam->load());
     hydraEngine.setEnvWarp (envWarpParam->load());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
@@ -187,15 +222,17 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         auto* rightChannel = oversampledBlock.getChannelPointer (1);
 
         hydraEngine.renderBlock (leftChannel, rightChannel, osNumSamples);
+        const auto* modulatedCutoff = hydraEngine.getFilterCutoffBuffer();
 
         for (int sample = 0; sample < osNumSamples; ++sample)
         {
+            const auto cutoffHz = modulatedCutoff != nullptr ? modulatedCutoff[sample] : cutoffParam->load();
             leftChannel[sample] = filterL.processSample (leftChannel[sample],
-                                                           cutoffParam->load(),
+                                                           cutoffHz,
                                                            resonance,
                                                            oversampledSampleRate);
             rightChannel[sample] = filterR.processSample (rightChannel[sample],
-                                                            cutoffParam->load(),
+                                                            cutoffHz,
                                                             resonance,
                                                             oversampledSampleRate);
         }
@@ -214,12 +251,14 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
             monoRightScratch.resize (static_cast<size_t> (osNumSamples));
 
         hydraEngine.renderBlock (leftChannel, monoRightScratch.data(), osNumSamples);
+        const auto* modulatedCutoff = hydraEngine.getFilterCutoffBuffer();
 
         for (int sample = 0; sample < osNumSamples; ++sample)
         {
             const auto monoSample = 0.5f * (leftChannel[sample] + monoRightScratch[static_cast<size_t> (sample)]);
+            const auto cutoffHz = modulatedCutoff != nullptr ? modulatedCutoff[sample] : cutoffParam->load();
             leftChannel[sample] = filterL.processSample (monoSample,
-                                                           cutoffParam->load(),
+                                                           cutoffHz,
                                                            resonance,
                                                            oversampledSampleRate);
         }

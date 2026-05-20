@@ -33,6 +33,8 @@ private:
 
     XyExplorer xyExplorer;
     juce::GroupComponent envelopeControlGroup;
+    juce::GroupComponent volumeEnvelopeGroup;
+    juce::GroupComponent filterEnvelopeGroup;
 
     juce::Slider harmonySlider;
     juce::Slider filterCutoffSlider;
@@ -50,22 +52,37 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 
     juce::Slider envWarpSlider;
+    juce::Slider egrAmountSlider;
     juce::Slider attackSlider;
     juce::Slider decaySlider;
     juce::Slider sustainSlider;
     juce::Slider releaseSlider;
+    juce::Slider filterAttackSlider;
+    juce::Slider filterDecaySlider;
+    juce::Slider filterSustainSlider;
+    juce::Slider filterReleaseSlider;
 
     juce::Label envWarpLabel;
+    juce::Label egrAmountLabel;
     juce::Label attackLabel;
     juce::Label decayLabel;
     juce::Label sustainLabel;
     juce::Label releaseLabel;
+    juce::Label filterAttackLabel;
+    juce::Label filterDecayLabel;
+    juce::Label filterSustainLabel;
+    juce::Label filterReleaseLabel;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> envWarpAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> egrAmountAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attackAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> decayAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sustainAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> releaseAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterAttackAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterDecayAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterSustainAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterReleaseAttachment;
 
     juce::MidiKeyboardComponent keyboardComponent;
 

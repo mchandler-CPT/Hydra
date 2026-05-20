@@ -7,6 +7,7 @@
 
 #include <juce_dsp/juce_dsp.h>
 #include <array>
+#include <vector>
 
 struct HydraPartialVoice
 {
@@ -57,9 +58,12 @@ public:
     void setHarmony (float harmony) noexcept;
     void setFilterCutoff (float cutoffHz) noexcept;
     void setEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept;
+    void setFilterEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept;
+    void setEgrAmount (float newEgrAmount) noexcept;
     void setEnvWarp (float envWarp) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
+    const float* getFilterCutoffBuffer() const noexcept { return filterCutoffBuffer.empty() ? nullptr : filterCutoffBuffer.data(); }
 
     float getVoiceAmplitude() const noexcept { return lastEnvelopeGain; }
 
@@ -83,7 +87,10 @@ private:
     float girth = 0.0f;
     float harmony = 0.0f;
     float envWarp = 0.0f;
+    float egrAmount = 0.5f;
+    juce::ADSR::Parameters baseEnvelopeParameters { 0.1f, 0.3f, 0.8f, 0.5f };
     float baseAttackSeconds = 0.1f;
+    juce::ADSR::Parameters baseFilterEnvelopeParameters { 0.1f, 0.3f, 0.7f, 0.5f };
     std::array<float, numPartials> frequencyMultipliers { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
     float noteVelocity = 0.0f;
     float lastEnvelopeGain = 0.0f;
@@ -91,6 +98,8 @@ private:
     int64_t samplesSinceNoteOn { 0 };
 
     juce::ADSR adsr;
+    juce::ADSR filterAdsr;
+    std::vector<float> filterCutoffBuffer;
 
     std::array<int, 16> noteStack {};
     int numNotesInStack = 0;

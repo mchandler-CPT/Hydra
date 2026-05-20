@@ -84,6 +84,11 @@ private:
     std::atomic<float>* decayParam { nullptr };
     std::atomic<float>* sustainParam { nullptr };
     std::atomic<float>* releaseParam { nullptr };
+    std::atomic<float>* filterAttackParam { nullptr };
+    std::atomic<float>* filterDecayParam { nullptr };
+    std::atomic<float>* filterSustainParam { nullptr };
+    std::atomic<float>* filterReleaseParam { nullptr };
+    std::atomic<float>* egrAmountParam { nullptr };
     std::atomic<float>* envWarpParam { nullptr };
 
     double currentSampleRate = 44100.0;

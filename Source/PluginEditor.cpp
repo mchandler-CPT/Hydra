@@ -3,8 +3,8 @@
 namespace
 {
 constexpr int kEditorWidth = 750;
-constexpr int kControlPanelHeight = 390;
-constexpr int kEditorHeight = 460;
+constexpr int kControlPanelHeight = 560;
+constexpr int kEditorHeight = 630;
 constexpr int kKeyboardHeight = 70;
 constexpr int kColumnWidth = 125;
 constexpr int kLabelBandHeight = 24;
@@ -23,6 +23,12 @@ constexpr int kXyPadRightMargin = 10;
 constexpr int kBottomKnobRowY = kXyPadY + kXyPadSize + 8;
 constexpr int kEnvWarpColumnX = 15;
 constexpr int kEnvelopeGroupPadding = 6;
+constexpr int kInnerEnvelopeGap = 8;
+constexpr int kEnvelopeInnerPadding = 10;
+constexpr int kEnvelopeBottomInset = 6;
+constexpr int kEnvelopeFooterPadding = 22;
+constexpr int kEnvelopeKnobLabelHeight = 20;
+constexpr int kEnvelopeKnobMinSize = 72;
 constexpr int kHarmonyColumnX = 15 + kXyPadSize + kXyPadRightMargin;
 constexpr int kCutoffColumnX = kHarmonyColumnX + kColumnWidth;
 constexpr int kResColumnX = kCutoffColumnX + kColumnWidth;
@@ -46,6 +52,14 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     envelopeControlGroup.setColour (juce::GroupComponent::outlineColourId, juce::Colour (0xff6a6560));
     envelopeControlGroup.setColour (juce::GroupComponent::textColourId, juce::Colour (kMutedLabelColour));
     addAndMakeVisible (envelopeControlGroup);
+    volumeEnvelopeGroup.setText ("VOLUME");
+    volumeEnvelopeGroup.setColour (juce::GroupComponent::outlineColourId, juce::Colour (0xff6a6560));
+    volumeEnvelopeGroup.setColour (juce::GroupComponent::textColourId, juce::Colour (kMutedLabelColour));
+    addAndMakeVisible (volumeEnvelopeGroup);
+    filterEnvelopeGroup.setText ("FILTER");
+    filterEnvelopeGroup.setColour (juce::GroupComponent::outlineColourId, juce::Colour (0xff6a6560));
+    filterEnvelopeGroup.setColour (juce::GroupComponent::textColourId, juce::Colour (kMutedLabelColour));
+    addAndMakeVisible (filterEnvelopeGroup);
 
     configureRotaryKnob (harmonySlider, harmonyLabel, "HARMONY", false);
     configureRotaryKnob (filterCutoffSlider, filterCutoffLabel, "FILTER CUTOFF", true, " Hz");
@@ -53,10 +67,15 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     configureRotaryKnob (gainSlider, gainLabel, "MASTER GAIN", false);
 
     configureAdsrKnob (envWarpSlider, envWarpLabel, "ENV WARP");
+    configureAdsrKnob (egrAmountSlider, egrAmountLabel, "EGR AMOUNT");
     configureAdsrKnob (attackSlider, attackLabel, "ATTACK");
     configureAdsrKnob (decaySlider, decayLabel, "DECAY");
     configureAdsrKnob (sustainSlider, sustainLabel, "SUSTAIN");
     configureAdsrKnob (releaseSlider, releaseLabel, "RELEASE");
+    configureAdsrKnob (filterAttackSlider, filterAttackLabel, "ATTACK");
+    configureAdsrKnob (filterDecaySlider, filterDecayLabel, "DECAY");
+    configureAdsrKnob (filterSustainSlider, filterSustainLabel, "SUSTAIN");
+    configureAdsrKnob (filterReleaseSlider, filterReleaseLabel, "RELEASE");
 
     filterCutoffLabel.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::bold }));
     filterCutoffLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
@@ -74,10 +93,15 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     filterResAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "res", filterResSlider);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "gain", gainSlider);
     envWarpAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "envWarp", envWarpSlider);
+    egrAmountAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "egrAmount", egrAmountSlider);
     attackAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "attack", attackSlider);
     decayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "decay", decaySlider);
     sustainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "sustain", sustainSlider);
     releaseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "release", releaseSlider);
+    filterAttackAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterAttack", filterAttackSlider);
+    filterDecayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterDecay", filterDecaySlider);
+    filterSustainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterSustain", filterSustainSlider);
+    filterReleaseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterRelease", filterReleaseSlider);
 }
 
 HydraAudioProcessorEditor::~HydraAudioProcessorEditor()
@@ -155,14 +179,16 @@ void HydraAudioProcessorEditor::resized()
     const auto bottomKnobRow = controlPanel.withY (kBottomKnobRowY).withHeight (kBottomKnobRowHeight);
 
     const auto envelopeGroupTop = kBottomKnobRowY - kEnvelopeGroupPadding;
-    const auto envelopeGroupBottom = juce::jmin (kBottomKnobRowY + kBottomKnobRowHeight + kEnvelopeGroupPadding,
-                                                 kControlPanelHeight - kPanelBottomMargin);
+    const auto envelopeGroupBottom = juce::jmin (kControlPanelHeight - (kPanelBottomMargin + kEnvelopeFooterPadding),
+                                                 kControlPanelHeight - (kPanelBottomMargin + kEnvelopeFooterPadding));
     const auto envelopeGroupBounds = juce::Rectangle<int>::leftTopRightBottom (kPanelHorizontalMargin,
                                                                                envelopeGroupTop,
                                                                                kEditorWidth - kPanelHorizontalMargin,
                                                                                envelopeGroupBottom);
     envelopeControlGroup.setBounds (envelopeGroupBounds);
     envelopeControlGroup.toBack();
+    volumeEnvelopeGroup.toBack();
+    filterEnvelopeGroup.toBack();
 
     const auto placeKnobColumn = [] (juce::Rectangle<int> rowBand,
                                      int x,
@@ -181,9 +207,53 @@ void HydraAudioProcessorEditor::resized()
     placeKnobColumn (topKnobRow, kResColumnX, filterResSlider, filterResLabel, kRotarySliderWithReadoutHeight);
     placeKnobColumn (topKnobRow, kGainColumnX, gainSlider, gainLabel, kRotaryBodyHeight);
 
-    placeKnobColumn (bottomKnobRow, kEnvWarpColumnX, envWarpSlider, envWarpLabel, kRotaryBodyHeight);
-    placeKnobColumn (bottomKnobRow, kHarmonyColumnX, attackSlider, attackLabel, kRotaryBodyHeight);
-    placeKnobColumn (bottomKnobRow, kCutoffColumnX, decaySlider, decayLabel, kRotaryBodyHeight);
-    placeKnobColumn (bottomKnobRow, kResColumnX, sustainSlider, sustainLabel, kRotaryBodyHeight);
-    placeKnobColumn (bottomKnobRow, kGainColumnX, releaseSlider, releaseLabel, kRotaryBodyHeight);
+    auto envelopeArea = envelopeGroupBounds.reduced (10, 16);
+    auto leftPillar = envelopeArea.removeFromLeft (kColumnWidth);
+    auto envWarpCell = leftPillar.removeFromTop ((leftPillar.getHeight() - kInnerEnvelopeGap) / 2);
+    leftPillar.removeFromTop (kInnerEnvelopeGap);
+    auto egrCell = leftPillar;
+
+    envWarpLabel.setBounds (envWarpCell.removeFromTop (kLabelBandHeight));
+    envWarpSlider.setBounds (envWarpCell.reduced (0, 2));
+    egrAmountLabel.setBounds (egrCell.removeFromTop (kLabelBandHeight));
+    egrAmountSlider.setBounds (egrCell.reduced (0, 2));
+
+    envelopeArea.removeFromLeft (10);
+
+    const auto totalInnerHeight = envelopeArea.getHeight();
+    const auto eachBoxHeight = (totalInnerHeight - kInnerEnvelopeGap) / 2;
+    auto volumeBoxBounds = envelopeArea.removeFromTop (eachBoxHeight);
+    envelopeArea.removeFromTop (kInnerEnvelopeGap);
+    auto filterBoxBounds = envelopeArea.removeFromTop (eachBoxHeight);
+
+    volumeEnvelopeGroup.setBounds (volumeBoxBounds);
+    filterEnvelopeGroup.setBounds (filterBoxBounds);
+
+    const auto placeRowInGroup = [] (juce::Rectangle<int> groupBounds,
+                                     juce::Slider& s1, juce::Label& l1,
+                                     juce::Slider& s2, juce::Label& l2,
+                                     juce::Slider& s3, juce::Label& l3,
+                                     juce::Slider& s4, juce::Label& l4)
+    {
+        auto row = groupBounds.reduced (kEnvelopeInnerPadding, 18);
+        const int columnWidth = row.getWidth() / 4;
+
+        auto placeLocalColumn = [columnWidth] (juce::Rectangle<int>& r, juce::Slider& slider, juce::Label& label)
+        {
+            auto col = r.removeFromLeft (columnWidth);
+            label.setBounds (col.removeFromTop (kEnvelopeKnobLabelHeight));
+            col.removeFromBottom (kEnvelopeBottomInset);
+            auto knobArea = col.reduced (4, 0);
+            const auto knobSize = juce::jmax (kEnvelopeKnobMinSize, juce::jmin (knobArea.getWidth(), knobArea.getHeight()));
+            slider.setBounds (juce::Rectangle<int> (knobSize, knobSize).withCentre (knobArea.getCentre()));
+        };
+
+        placeLocalColumn (row, s1, l1);
+        placeLocalColumn (row, s2, l2);
+        placeLocalColumn (row, s3, l3);
+        placeLocalColumn (row, s4, l4);
+    };
+
+    placeRowInGroup (volumeBoxBounds, attackSlider, attackLabel, decaySlider, decayLabel, sustainSlider, sustainLabel, releaseSlider, releaseLabel);
+    placeRowInGroup (filterBoxBounds, filterAttackSlider, filterAttackLabel, filterDecaySlider, filterDecayLabel, filterSustainSlider, filterSustainLabel, filterReleaseSlider, filterReleaseLabel);
 }

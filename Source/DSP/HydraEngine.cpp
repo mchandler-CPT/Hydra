@@ -51,13 +51,10 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
     smoothedFrequency.setCurrentAndTargetValue (0.0f);
 
     adsr.setSampleRate (sampleRate);
+    filterAdsr.setSampleRate (sampleRate);
 
-    juce::ADSR::Parameters defaultEnvelope;
-    defaultEnvelope.attack = 0.1f;
-    defaultEnvelope.decay = 0.3f;
-    defaultEnvelope.sustain = 0.8f;
-    defaultEnvelope.release = 0.5f;
-    adsr.setParameters (defaultEnvelope);
+    adsr.setParameters (baseEnvelopeParameters);
+    filterAdsr.setParameters (baseFilterEnvelopeParameters);
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
@@ -93,6 +90,8 @@ void HydraEngine::reset() noexcept
     samplesSinceNoteOn = 0;
 
     adsr.reset();
+    filterAdsr.reset();
+    filterCutoffBuffer.clear();
 
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
     smoothedFrequency.setCurrentAndTargetValue (0.0f);
@@ -189,6 +188,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     fundamentalFreq = targetFreq;
 
     adsr.noteOn();
+    filterAdsr.noteOn();
 
     if (! isNoteAlreadyPlaying)
     {
@@ -230,22 +230,35 @@ void HydraEngine::noteOff (int midiNoteNumber) noexcept
 
     isKeyHeld = false;
     adsr.noteOff();
+    filterAdsr.noteOff();
 }
 
 void HydraEngine::setEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept
 {
-    juce::ADSR::Parameters params;
-    params.attack = juce::jmax (0.001f, attack);
-    params.decay = juce::jmax (0.01f, decay);
-    params.sustain = juce::jlimit (0.0f, 1.0f, sustain);
-    params.release = juce::jmax (0.01f, release);
-    baseAttackSeconds = params.attack;
-    adsr.setParameters (params);
+    baseEnvelopeParameters.attack = juce::jmax (0.001f, attack);
+    baseEnvelopeParameters.decay = juce::jmax (0.001f, decay);
+    baseEnvelopeParameters.sustain = juce::jlimit (0.0f, 1.0f, sustain);
+    baseEnvelopeParameters.release = juce::jmax (0.001f, release);
+    baseAttackSeconds = baseEnvelopeParameters.attack;
+    adsr.setParameters (baseEnvelopeParameters);
 }
 
 void HydraEngine::setEnvWarp (float newEnvWarp) noexcept
 {
     envWarp = juce::jlimit (0.0f, 1.0f, newEnvWarp);
+}
+
+void HydraEngine::setEgrAmount (float newEgrAmount) noexcept
+{
+    egrAmount = juce::jlimit (-1.0f, 1.0f, newEgrAmount);
+}
+
+void HydraEngine::setFilterEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept
+{
+    baseFilterEnvelopeParameters.attack = juce::jmax (0.001f, attack);
+    baseFilterEnvelopeParameters.decay = juce::jmax (0.001f, decay);
+    baseFilterEnvelopeParameters.sustain = juce::jlimit (0.0f, 1.0f, sustain);
+    baseFilterEnvelopeParameters.release = juce::jmax (0.001f, release);
 }
 
 void HydraEngine::setDepth (float newDepth) noexcept
@@ -273,19 +286,34 @@ void HydraEngine::setFilterCutoff (float cutoffHz) noexcept
 
 void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept
 {
+    if (static_cast<int> (filterCutoffBuffer.size()) < numSamples)
+        filterCutoffBuffer.resize (static_cast<size_t> (numSamples), 20000.0f);
+
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {
+        juce::ADSR::Parameters warpedVolumeEnvelope = baseEnvelopeParameters;
+        warpedVolumeEnvelope.attack = juce::jmax (0.001f, baseEnvelopeParameters.attack * (1.0f + envWarp));
+        adsr.setParameters (warpedVolumeEnvelope);
+
+        juce::ADSR::Parameters warpedFilterEnvelope = baseFilterEnvelopeParameters;
+        warpedFilterEnvelope.attack = juce::jmax (0.001f, baseFilterEnvelopeParameters.attack * (1.0f + envWarp));
+        filterAdsr.setParameters (warpedFilterEnvelope);
+
         const auto envelopeGain = adsr.getNextSample();
+        const auto filterEnvAmt = filterAdsr.getNextSample();
         lastEnvelopeGain = envelopeGain * noteVelocity;
 
         if (! adsr.isActive())
         {
+            filterCutoffBuffer[static_cast<size_t> (sampleIndex)] = smoothedCutoffHz.getCurrentValue();
             leftChannel[sampleIndex] = 0.0f;
             rightChannel[sampleIndex] = 0.0f;
             continue;
         }
 
-        const auto fc = smoothedCutoffHz.getNextValue();
+        const auto baseCutoffHz = smoothedCutoffHz.getNextValue();
+        const auto cutoffHz = juce::jlimit (20.0f, 20000.0f, baseCutoffHz + (filterEnvAmt * egrAmount * 3500.0f));
+        filterCutoffBuffer[static_cast<size_t> (sampleIndex)] = cutoffHz;
         const auto currentBaseFreq = smoothedFrequency.getNextValue();
 
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesLeft {};
@@ -319,7 +347,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             const auto harmonicFrequency = static_cast<double> (fn);
             oscillator.setFrequency (harmonicFrequency, false);
 
-            const auto damping = (fn <= fc) ? 1.0f : std::exp (-(fn - fc) * spectralDampingS);
+            const auto damping = (fn <= cutoffHz) ? 1.0f : std::exp (-(fn - cutoffHz) * spectralDampingS);
 
             const auto oscillated = oscillator.evaluateSample (morph);
             const auto delayed = voice.processDelaySample (oscillated);
@@ -358,5 +386,6 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         clearAllDelayLines();
         phaseDisperser.reset();
+        filterAdsr.reset();
     }
 }
