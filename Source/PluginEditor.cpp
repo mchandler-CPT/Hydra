@@ -208,7 +208,9 @@ void HydraAudioProcessorEditor::resized()
     placeKnobColumn (topKnobRow, kGainColumnX, gainSlider, gainLabel, kRotaryBodyHeight);
 
     auto envelopeArea = envelopeGroupBounds.reduced (10, 16);
-    auto leftPillar = envelopeArea.removeFromLeft (kColumnWidth);
+    constexpr int kEnvelopeGridColumns = 5;
+    const int pillarWidth = envelopeArea.getWidth() / kEnvelopeGridColumns;
+    auto leftPillar = envelopeArea.removeFromLeft (pillarWidth);
     auto envWarpCell = leftPillar.removeFromTop ((leftPillar.getHeight() - kInnerEnvelopeGap) / 2);
     leftPillar.removeFromTop (kInnerEnvelopeGap);
     auto egrCell = leftPillar;
@@ -218,7 +220,7 @@ void HydraAudioProcessorEditor::resized()
     egrAmountLabel.setBounds (egrCell.removeFromTop (kLabelBandHeight));
     egrAmountSlider.setBounds (egrCell.reduced (0, 2));
 
-    envelopeArea.removeFromLeft (10);
+    envelopeArea.removeFromLeft (6);
 
     const auto totalInnerHeight = envelopeArea.getHeight();
     const auto eachBoxHeight = (totalInnerHeight - kInnerEnvelopeGap) / 2;

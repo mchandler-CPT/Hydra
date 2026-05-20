@@ -88,10 +88,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kEgrAmountParamId, 1 },
                                                      "EGR Amount",
                                                      juce::NormalisableRange<float> { -1.0f, 1.0f, 0.01f },
-                                                     0.5f),
+                                                     0.0f),
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kEnvWarpParamId, 1 },
                                                      "Env Warp",
-                                                     juce::NormalisableRange<float> { 0.0f, 1.0f },
+                                                     juce::NormalisableRange<float> { -1.0f, 1.0f },
                                                      0.0f)
     };
 }

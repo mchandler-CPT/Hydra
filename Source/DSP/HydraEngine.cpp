@@ -245,7 +245,7 @@ void HydraEngine::setEnvelopeParameters (float attack, float decay, float sustai
 
 void HydraEngine::setEnvWarp (float newEnvWarp) noexcept
 {
-    envWarp = juce::jlimit (0.0f, 1.0f, newEnvWarp);
+    envWarp = juce::jlimit (-1.0f, 1.0f, newEnvWarp);
 }
 
 void HydraEngine::setEgrAmount (float newEgrAmount) noexcept
@@ -330,8 +330,19 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             const auto panL = voice.panL.getNextValue();
             const auto panR = voice.panR.getNextValue();
 
-            const auto partialAttackSeconds =
-                baseAttackSeconds + (envWarp * 0.05f * static_cast<float> (partialIndex));
+            float partialAttackSeconds = baseAttackSeconds;
+            const auto currentEnvWarp = envWarp;
+
+            if (currentEnvWarp >= 0.0f)
+            {
+                partialAttackSeconds += (currentEnvWarp * 0.05f * static_cast<float> (partialIndex));
+            }
+            else
+            {
+                const auto warpIntensity = std::abs (currentEnvWarp);
+                partialAttackSeconds += (warpIntensity * 0.05f * static_cast<float> ((numPartials - 1) - partialIndex));
+            }
+
             const auto partialAttackSamples = partialAttackSeconds * static_cast<float> (sampleRate);
 
             auto phaseIn = 1.0f;
