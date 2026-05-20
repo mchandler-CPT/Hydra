@@ -47,7 +47,8 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
     smoothedCutoffHz.reset (sampleRate, smoothingSeconds);
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
 
-    smoothedFrequency.reset (sampleRate, 0.003);
+    appliedGlideTimeSeconds = juce::jmax (0.003f, glideTimeSeconds);
+    smoothedFrequency.reset (sampleRate, static_cast<double> (appliedGlideTimeSeconds));
     smoothedFrequency.setCurrentAndTargetValue (0.0f);
 
     adsr.setSampleRate (sampleRate);
@@ -253,6 +254,22 @@ void HydraEngine::setEgrAmount (float newEgrAmount) noexcept
     egrAmount = juce::jlimit (-1.0f, 1.0f, newEgrAmount);
 }
 
+void HydraEngine::setGlideTime (float newGlideTimeSeconds) noexcept
+{
+    glideTimeSeconds = juce::jlimit (0.0f, 2.0f, newGlideTimeSeconds);
+}
+
+void HydraEngine::updateFrequencyGlideSmoothing() noexcept
+{
+    const auto targetSmoothTime = juce::jmax (0.003f, glideTimeSeconds);
+
+    if (std::abs (targetSmoothTime - appliedGlideTimeSeconds) <= 1.0e-6f)
+        return;
+
+    smoothedFrequency.reset (sampleRate, static_cast<double> (targetSmoothTime));
+    appliedGlideTimeSeconds = targetSmoothTime;
+}
+
 void HydraEngine::setFilterEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept
 {
     baseFilterEnvelopeParameters.attack = juce::jmax (0.001f, attack);
@@ -288,6 +305,8 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 {
     if (static_cast<int> (filterCutoffBuffer.size()) < numSamples)
         filterCutoffBuffer.resize (static_cast<size_t> (numSamples), 20000.0f);
+
+    updateFrequencyGlideSmoothing();
 
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {

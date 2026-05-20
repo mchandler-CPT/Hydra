@@ -90,6 +90,7 @@ private:
     std::atomic<float>* filterReleaseParam { nullptr };
     std::atomic<float>* egrAmountParam { nullptr };
     std::atomic<float>* envWarpParam { nullptr };
+    std::atomic<float>* glideTimeParam { nullptr };
 
     double currentSampleRate = 44100.0;
     double oversampledSampleRate = 44100.0;

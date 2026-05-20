@@ -19,6 +19,7 @@ constexpr const char* kFilterSustainParamId = "filterSustain";
 constexpr const char* kFilterReleaseParamId = "filterRelease";
 constexpr const char* kEgrAmountParamId = "egrAmount";
 constexpr const char* kEnvWarpParamId = "envWarp";
+constexpr const char* kGlideTimeParamId = "glideTime";
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
@@ -92,7 +93,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kEnvWarpParamId, 1 },
                                                      "Env Warp",
                                                      juce::NormalisableRange<float> { -1.0f, 1.0f },
-                                                     0.0f)
+                                                     0.0f),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kGlideTimeParamId, 1 },
+                                                     "Glide Time",
+                                                     juce::NormalisableRange<float> { 0.0f, 2.0f, 0.001f },
+                                                     0.05f)
     };
 }
 
@@ -124,6 +129,7 @@ HydraAudioProcessor::HydraAudioProcessor()
     filterReleaseParam = apvts.getRawParameterValue (kFilterReleaseParamId);
     egrAmountParam = apvts.getRawParameterValue (kEgrAmountParamId);
     envWarpParam = apvts.getRawParameterValue (kEnvWarpParamId);
+    glideTimeParam = apvts.getRawParameterValue (kGlideTimeParamId);
 }
 
 HydraAudioProcessor::~HydraAudioProcessor() {}
@@ -192,6 +198,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
                                              filterReleaseParam->load());
     hydraEngine.setEgrAmount (egrAmountParam->load());
     hydraEngine.setEnvWarp (envWarpParam->load());
+    hydraEngine.setGlideTime (glideTimeParam->load());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
 
