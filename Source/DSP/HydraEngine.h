@@ -63,6 +63,7 @@ public:
     void setEnvWarp (float envWarp) noexcept;
     void setGlideTime (float glideTimeSeconds) noexcept;
     void setScaleMorph (float scaleMorph) noexcept;
+    void setKbTrack (float kbTrack) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
     const float* getFilterCutoffBuffer() const noexcept { return filterCutoffBuffer.empty() ? nullptr : filterCutoffBuffer.data(); }
@@ -95,6 +96,8 @@ private:
     float glideTimeSeconds = 0.05f;
     float appliedGlideTimeSeconds = 0.003f;
     float scaleMorph = 0.0f;
+    float kbTrack = 0.0f;
+    int activeMidiNoteNumber = 69;
     juce::ADSR::Parameters baseEnvelopeParameters { 0.1f, 0.3f, 0.8f, 0.5f };
     float baseAttackSeconds = 0.1f;
     juce::ADSR::Parameters baseFilterEnvelopeParameters { 0.1f, 0.3f, 0.7f, 0.5f };

@@ -92,6 +92,7 @@ private:
     std::atomic<float>* envWarpParam { nullptr };
     std::atomic<float>* glideTimeParam { nullptr };
     std::atomic<float>* scaleMorphParam { nullptr };
+    std::atomic<float>* kbTrackParam { nullptr };
 
     double currentSampleRate = 44100.0;
     double oversampledSampleRate = 44100.0;

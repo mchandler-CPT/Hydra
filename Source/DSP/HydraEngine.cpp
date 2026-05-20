@@ -165,6 +165,7 @@ void HydraEngine::updateOscillatorTuning (bool glidePitch) noexcept
 
 void HydraEngine::retuneOscillatorsForNote (int midiNoteNumber, bool glidePitch) noexcept
 {
+    activeMidiNoteNumber = midiNoteNumber;
     const auto targetFreq = midiNoteToFrequency (midiNoteNumber);
     fundamentalFreq = targetFreq;
 
@@ -196,6 +197,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
     const auto isNoteAlreadyPlaying = adsr.isActive();
     const auto activeNote = noteStack[static_cast<size_t> (numNotesInStack - 1)];
+    activeMidiNoteNumber = activeNote;
     const auto targetFreq = midiNoteToFrequency (activeNote);
 
     noteVelocity = clampedVelocity;
@@ -279,6 +281,11 @@ void HydraEngine::setScaleMorph (float newScaleMorph) noexcept
     scaleMorph = juce::jlimit (0.0f, 1.0f, newScaleMorph);
 }
 
+void HydraEngine::setKbTrack (float newKbTrack) noexcept
+{
+    kbTrack = juce::jlimit (0.0f, 1.0f, newKbTrack);
+}
+
 void HydraEngine::updateFrequencyGlideSmoothing() noexcept
 {
     const auto targetSmoothTime = juce::jmax (0.003f, glideTimeSeconds);
@@ -350,8 +357,16 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             continue;
         }
 
-        const auto baseCutoffHz = smoothedCutoffHz.getNextValue();
-        const auto cutoffHz = juce::jlimit (20.0f, 20000.0f, baseCutoffHz + (filterEnvAmt * egrAmount * 3500.0f));
+        const auto baselineCutoff = smoothedCutoffHz.getNextValue();
+        const auto morphValue = scaleMorph;
+        const auto tuningDivisor = 12.0f + (morphValue * 12.0f);
+        const auto octavesFromAnchor =
+            (static_cast<float> (activeMidiNoteNumber) - 69.0f) / tuningDivisor;
+        const auto trackedCutoffFloor =
+            baselineCutoff * std::pow (2.0f, kbTrack * octavesFromAnchor);
+        const auto dynamicCutoff =
+            trackedCutoffFloor + (filterEnvAmt * egrAmount * 3500.0f);
+        const auto cutoffHz = juce::jlimit (20.0f, 20000.0f, dynamicCutoff);
         filterCutoffBuffer[static_cast<size_t> (sampleIndex)] = cutoffHz;
         const auto currentBaseFreq = smoothedFrequency.getNextValue();
 
