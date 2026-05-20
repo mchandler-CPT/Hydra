@@ -1,4 +1,8 @@
 #include "PluginEditor.h"
+#include "DSP/HydraHarmonySnap.h"
+
+#include <array>
+#include <limits>
 
 namespace
 {
@@ -37,6 +41,15 @@ constexpr int kCutoffColumnX = kHarmonyColumnX + kColumnWidth;
 constexpr int kResColumnX = kCutoffColumnX + kColumnWidth;
 constexpr int kGainColumnX = kResColumnX + kColumnWidth;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
+constexpr int kHarmonySnapButtonWidth = 46;
+constexpr int kHarmonySnapLabelHeight = 18;
+constexpr std::array<const char*, 5> kHarmonySnapStepLabels {
+    "0% MAJOR",
+    "30% FRICTION",
+    "60% BLOOM",
+    "80% TENSION",
+    "100% POWER"
+};
 } // namespace
 
 HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& processor)
@@ -65,6 +78,20 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     addAndMakeVisible (filterEnvelopeGroup);
 
     configureRotaryKnob (harmonySlider, harmonyLabel, "HARMONY", false);
+
+    harmonyQuantizeButton.setButtonText ("SNAP");
+    harmonyQuantizeButton.setClickingTogglesState (true);
+    harmonyQuantizeButton.setColour (juce::ToggleButton::textColourId, juce::Colour (kMutedLabelColour));
+    harmonyQuantizeButton.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffc4a574));
+    harmonyQuantizeButton.setColour (juce::ToggleButton::tickDisabledColourId, juce::Colour (0xff6a6560));
+    addAndMakeVisible (harmonyQuantizeButton);
+
+    harmonySnapValueLabel.setJustificationType (juce::Justification::centred);
+    harmonySnapValueLabel.setInterceptsMouseClicks (false, false);
+    harmonySnapValueLabel.setFont (juce::Font (juce::FontOptions { 10.0f, juce::Font::bold }));
+    harmonySnapValueLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
+    addAndMakeVisible (harmonySnapValueLabel);
+
     configureRotaryKnob (filterCutoffSlider, filterCutoffLabel, "FILTER CUTOFF", true, " Hz");
     configureRotaryKnob (filterResSlider, filterResLabel, "RESONANCE", true);
     configureRotaryKnob (gainSlider, gainLabel, "MASTER GAIN", false);
@@ -96,6 +123,30 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
             xyExplorer.setParameters (*depthParam, *girthParam);
 
     harmonyAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "harmony", harmonySlider);
+    harmonyQuantizeAttachment =
+        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (apvts, "harmonyQuantize", harmonyQuantizeButton);
+
+    harmonySlider.onValueChange = [this]
+    {
+        if (isUpdatingHarmonySnap || ! harmonyQuantizeButton.getToggleState())
+            return;
+
+        snapHarmonyParameterToNearestStep();
+    };
+
+    harmonyQuantizeButton.onClick = [this]
+    {
+        updateHarmonySnapUi();
+
+        if (harmonyQuantizeButton.getToggleState())
+            snapHarmonyParameterToNearestStep();
+    };
+
+    updateHarmonySnapUi();
+
+    if (harmonyQuantizeButton.getToggleState())
+        snapHarmonyParameterToNearestStep();
+
     filterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "cutoff", filterCutoffSlider);
     filterResAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "res", filterResSlider);
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "gain", gainSlider);
@@ -152,6 +203,44 @@ void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
     label.setJustificationType (juce::Justification::centred);
     label.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (label);
+}
+
+int HydraAudioProcessorEditor::nearestHarmonySnapIndex (const float harmonyValue) const noexcept
+{
+    return HydraHarmonySnap::stepIndexForHarmony (harmonyValue);
+}
+
+void HydraAudioProcessorEditor::snapHarmonyParameterToNearestStep()
+{
+    auto* harmonyParam = audioProcessor.getApvts().getParameter ("harmony");
+
+    if (harmonyParam == nullptr)
+        return;
+
+    const auto& range = harmonyParam->getNormalisableRange();
+    const auto denormalizedValue = range.convertFrom0to1 (harmonyParam->getValue());
+    const auto snappedValue = HydraHarmonySnap::quantizeHarmonyValue (denormalizedValue);
+    const auto snapIndex = HydraHarmonySnap::stepIndexForQuantizedHarmony (snappedValue);
+    const auto normalizedValue = range.convertTo0to1 (snappedValue);
+
+    isUpdatingHarmonySnap = true;
+
+    if (std::abs (harmonyParam->getValue() - normalizedValue) > 1.0e-5f)
+        harmonyParam->setValueNotifyingHost (normalizedValue);
+
+    isUpdatingHarmonySnap = false;
+
+    harmonySnapValueLabel.setText (kHarmonySnapStepLabels[static_cast<size_t> (snapIndex)],
+                                   juce::dontSendNotification);
+}
+
+void HydraAudioProcessorEditor::updateHarmonySnapUi()
+{
+    const auto snapEnabled = harmonyQuantizeButton.getToggleState();
+    harmonySnapValueLabel.setVisible (snapEnabled);
+
+    if (! snapEnabled)
+        harmonySnapValueLabel.setText ({}, juce::dontSendNotification);
 }
 
 void HydraAudioProcessorEditor::configureAdsrKnob (juce::Slider& slider,
@@ -212,7 +301,15 @@ void HydraAudioProcessorEditor::resized()
         slider.setBounds (column.removeFromTop (juce::jmin (sliderHeight, column.getHeight())));
     };
 
-    placeKnobColumn (topKnobRow, kHarmonyColumnX, harmonySlider, harmonyLabel, kRotaryBodyHeight);
+    {
+        auto harmonyColumn = topKnobRow.withX (kHarmonyColumnX).withWidth (kColumnWidth);
+        auto labelRow = harmonyColumn.removeFromTop (kLabelBandHeight);
+        harmonyQuantizeButton.setBounds (labelRow.removeFromRight (kHarmonySnapButtonWidth).reduced (2, 4));
+        harmonyLabel.setBounds (labelRow);
+        harmonyColumn.removeFromBottom (kControlColumnBottomInset);
+        harmonySnapValueLabel.setBounds (harmonyColumn.removeFromBottom (kHarmonySnapLabelHeight));
+        harmonySlider.setBounds (harmonyColumn.removeFromTop (juce::jmin (kRotaryBodyHeight, harmonyColumn.getHeight())));
+    }
     placeKnobColumn (topKnobRow, kCutoffColumnX, filterCutoffSlider, filterCutoffLabel, kRotarySliderWithReadoutHeight);
     placeKnobColumn (topKnobRow, kResColumnX, filterResSlider, filterResLabel, kRotarySliderWithReadoutHeight);
     placeKnobColumn (topKnobRow, kGainColumnX, gainSlider, gainLabel, kRotaryBodyHeight);

@@ -23,6 +23,7 @@ constexpr const char* kGlideTimeParamId = "glideTime";
 constexpr const char* kScaleMorphParamId = "scaleMorph";
 constexpr const char* kKbTrackParamId = "kbTrack";
 constexpr const char* kFilterOverloadParamId = "filterOverload";
+constexpr const char* kHarmonyQuantizeParamId = "harmonyQuantize";
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
@@ -112,7 +113,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kFilterOverloadParamId, 1 },
                                                      "Overload",
                                                      juce::NormalisableRange<float> { 0.0f, 1.0f, 0.01f },
-                                                     0.0f)
+                                                     0.0f),
+        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kHarmonyQuantizeParamId, 1 },
+                                                    "Harmony Snap",
+                                                    false)
     };
 }
 
@@ -148,6 +152,7 @@ HydraAudioProcessor::HydraAudioProcessor()
     scaleMorphParam = apvts.getRawParameterValue (kScaleMorphParamId);
     kbTrackParam = apvts.getRawParameterValue (kKbTrackParamId);
     filterOverloadParam = apvts.getRawParameterValue (kFilterOverloadParamId);
+    harmonyQuantizeParam = apvts.getRawParameterValue (kHarmonyQuantizeParamId);
 }
 
 HydraAudioProcessor::~HydraAudioProcessor() {}
@@ -203,10 +208,12 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     const auto harmony = harmonyParam->load();
     const auto kbTrack = kbTrackParam->load();
     const auto filterOverload = filterOverloadParam->load();
+    const auto harmonyQuantize = harmonyQuantizeParam->load() > 0.5f;
 
     hydraEngine.setDepth (depth);
     hydraEngine.setGirth (girth);
     hydraEngine.setHarmony (harmony);
+    hydraEngine.setHarmonyQuantize (harmonyQuantize);
     hydraEngine.setFilterCutoff (cutoffParam->load());
     hydraEngine.setEnvelopeParameters (attackParam->load(),
                                        decayParam->load(),

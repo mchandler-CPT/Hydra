@@ -1,4 +1,5 @@
 #include "HydraEngine.h"
+#include "HydraHarmonySnap.h"
 
 #include <cmath>
 
@@ -133,7 +134,12 @@ void HydraEngine::reset() noexcept
 
 void HydraEngine::applyMacroTargets() noexcept
 {
-    const auto packet = macroMapper.computeTargets (depth, girth, harmony);
+    const auto clampedHarmony = juce::jlimit (0.0f, 1.0f, harmony);
+    const auto effectiveHarmonyForMapper = harmonyQuantize
+        ? HydraHarmonySnap::quantizeHarmonyValue (clampedHarmony)
+        : clampedHarmony;
+
+    const auto packet = macroMapper.computeTargets (depth, girth, effectiveHarmonyForMapper);
     frequencyMultipliers = packet.frequencyMultipliers;
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
@@ -146,7 +152,6 @@ void HydraEngine::applyMacroTargets() noexcept
         voice.panL.setTargetValue (packet.panningPairs[index].first);
         voice.panR.setTargetValue (packet.panningPairs[index].second);
     }
-
 }
 
 void HydraEngine::updateOscillatorTuning (bool glidePitch) noexcept
@@ -357,6 +362,12 @@ void HydraEngine::setHarmony (float newHarmony) noexcept
     applyMacroTargets();
 }
 
+void HydraEngine::setHarmonyQuantize (bool newHarmonyQuantize) noexcept
+{
+    harmonyQuantize = newHarmonyQuantize;
+    applyMacroTargets();
+}
+
 void HydraEngine::setFilterCutoff (float cutoffHz) noexcept
 {
     smoothedCutoffHz.setTargetValue (juce::jlimit (20.0f, 20000.0f, cutoffHz));
@@ -367,6 +378,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
     if (static_cast<int> (filterCutoffBuffer.size()) < numSamples)
         filterCutoffBuffer.resize (static_cast<size_t> (numSamples), 20000.0f);
 
+    applyMacroTargets();
     updateFrequencyGlideSmoothing();
 
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)

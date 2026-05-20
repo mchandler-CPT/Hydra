@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "DSP/HydraEngine.h"
+#include "DSP/HydraHarmonySnap.h"
 #include "DSP/HydraMacroMapper.h"
 #include "DSP/HydraOscillator.h"
 #include "DSP/HydraParallelSaturator.h"
@@ -494,4 +495,50 @@ TEST_CASE ("HydraEngine Voice Lifecycle", "[HydraEngine]")
         engine.reset();
         REQUIRE (renderPeak (engine, kBlockSize) == Catch::Approx (0.0f).margin (1.0e-6f));
     }
+
+    SECTION ("Harmony snap at 0% matches continuous output level")
+    {
+        constexpr int renderSamples = static_cast<int> (kSampleRate * 0.08);
+
+        auto renderWithHarmonySettings = [&] (const bool quantizeEnabled)
+        {
+            engine.reset();
+            engine.setDepth (1.0f);
+            engine.setGirth (0.5f);
+            engine.setHarmony (0.0f);
+            engine.setHarmonyQuantize (quantizeEnabled);
+            engine.noteOn (69, 1.0f);
+            return renderPeak (engine, renderSamples);
+        };
+
+        const auto continuousPeak = renderWithHarmonySettings (false);
+        const auto snappedPeak = renderWithHarmonySettings (true);
+
+        REQUIRE (continuousPeak > 0.05f);
+        REQUIRE (snappedPeak > 0.05f);
+        REQUIRE (snappedPeak == Catch::Approx (continuousPeak).margin (0.2f));
+    }
+}
+
+TEST_CASE ("HydraHarmonySnap quantizes harmony to continuum anchors", "[HydraHarmonySnap]")
+{
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.14f) == Catch::Approx (0.0f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.15f) == Catch::Approx (0.3f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.44f) == Catch::Approx (0.3f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.45f) == Catch::Approx (0.6f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.69f) == Catch::Approx (0.6f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.70f) == Catch::Approx (0.8f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.89f) == Catch::Approx (0.8f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.90f) == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (1.00f) == Catch::Approx (1.0f).margin (1.0e-6f));
+}
+
+TEST_CASE ("HydraHarmonySnap POWER step preserves recipe 4 upper octave via mapper", "[HydraHarmonySnap]")
+{
+    HydraMacroMapper mapper;
+    const auto powerHarmony = HydraHarmonySnap::quantizeHarmonyValue (0.95f);
+    const auto packet = mapper.computeTargets (1.0f, 0.5f, powerHarmony);
+
+    REQUIRE (powerHarmony == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (packet.frequencyMultipliers[6] == Catch::Approx (16.0225f).margin (0.01f));
 }

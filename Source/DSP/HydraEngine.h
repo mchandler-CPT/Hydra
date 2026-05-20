@@ -56,6 +56,7 @@ public:
     void setDepth (float depth) noexcept;
     void setGirth (float girth) noexcept;
     void setHarmony (float harmony) noexcept;
+    void setHarmonyQuantize (bool harmonyQuantize) noexcept;
     void setFilterCutoff (float cutoffHz) noexcept;
     void setEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept;
     void setFilterEnvelopeParameters (float attack, float decay, float sustain, float release) noexcept;
@@ -93,6 +94,7 @@ private:
     float depth = 0.0f;
     float girth = 0.0f;
     float harmony = 0.0f;
+    bool harmonyQuantize = false;
     float envWarp = 0.0f;
     float egrAmount = 0.0f;
     float glideTimeSeconds = 0.05f;

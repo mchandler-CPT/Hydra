@@ -28,6 +28,10 @@ private:
 
     void configureAdsrKnob (juce::Slider& slider, juce::Label& label, const juce::String& labelText);
 
+    void updateHarmonySnapUi();
+    void snapHarmonyParameterToNearestStep();
+    int nearestHarmonySnapIndex (float harmonyValue) const noexcept;
+
     HydraAudioProcessor& audioProcessor;
     BoutiqueLookAndFeel customLookAndFeel;
 
@@ -37,16 +41,19 @@ private:
     juce::GroupComponent filterEnvelopeGroup;
 
     juce::Slider harmonySlider;
+    juce::ToggleButton harmonyQuantizeButton;
     juce::Slider filterCutoffSlider;
     juce::Slider filterResSlider;
     juce::Slider gainSlider;
 
     juce::Label harmonyLabel;
+    juce::Label harmonySnapValueLabel;
     juce::Label filterCutoffLabel;
     juce::Label filterResLabel;
     juce::Label gainLabel;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> harmonyAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> harmonyQuantizeAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterCutoffAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterResAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
@@ -97,6 +104,8 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> overloadAttachment;
 
     juce::MidiKeyboardComponent keyboardComponent;
+
+    bool isUpdatingHarmonySnap = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HydraAudioProcessorEditor)
 };

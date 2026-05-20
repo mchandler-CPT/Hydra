@@ -94,6 +94,7 @@ private:
     std::atomic<float>* scaleMorphParam { nullptr };
     std::atomic<float>* kbTrackParam { nullptr };
     std::atomic<float>* filterOverloadParam { nullptr };
+    std::atomic<float>* harmonyQuantizeParam { nullptr };
 
     double currentSampleRate = 44100.0;
     double oversampledSampleRate = 44100.0;
