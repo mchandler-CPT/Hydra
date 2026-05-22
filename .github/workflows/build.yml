@@ -1,0 +1,246 @@
+name: Build Hydra
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-plugin:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake (macOS)
+        if: matrix.os == 'macos-latest'
+        run: cmake -B build -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build plugin target
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target Hydra_All
+          if ($LASTEXITCODE -ne 0) {
+            cmake --build build --config Release --target BoutiqueHydra_All
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Import signing certificates (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        env:
+          MACOS_APP_CERT: ${{ secrets.MACOS_APP_CERT }}
+          MACOS_INSTALL_CERT: ${{ secrets.MACOS_INSTALL_CERT }}
+          MACOS_CERT_PWD: ${{ secrets.MACOS_CERT_PWD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MACOS_APP_CERT}" ] || [ -z "${MACOS_INSTALL_CERT}" ] || [ -z "${MACOS_CERT_PWD}" ]; then
+            echo "Required macOS signing secrets are missing."
+            exit 1
+          fi
+          APP_CERT_PATH="$RUNNER_TEMP/macos_app_cert.p12"
+          INSTALL_CERT_PATH="$RUNNER_TEMP/macos_install_cert.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build-signing.keychain-db"
+          echo "${MACOS_APP_CERT}" | base64 --decode > "${APP_CERT_PATH}"
+          echo "${MACOS_INSTALL_CERT}" | base64 --decode > "${INSTALL_CERT_PATH}"
+          security create-keychain -p "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security unlock-keychain -p "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
+          security list-keychains -d user -s "${KEYCHAIN_PATH}" login.keychain-db
+          security import "${APP_CERT_PATH}" -k "${KEYCHAIN_PATH}" -P "${MACOS_CERT_PWD}" -T /usr/bin/codesign -T /usr/bin/productsign
+          security import "${INSTALL_CERT_PATH}" -k "${KEYCHAIN_PATH}" -P "${MACOS_CERT_PWD}" -T /usr/bin/codesign -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
+
+      - name: Install Inno Setup (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: choco install innosetup -y
+
+      - name: Stage for Installer (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $dist = 'installer_dist'
+          $hydraVst3 = Join-Path $dist 'Hydra.vst3'
+          New-Item -ItemType Directory -Path $dist -Force | Out-Null
+          $vst3Root = 'build/BoutiqueHydra_artefacts/Release/VST3'
+          $bundle = Get-ChildItem -LiteralPath $vst3Root -Directory -Filter '*.vst3' | Select-Object -First 1
+          if (-not $bundle) { throw "No .vst3 bundle found under $vst3Root" }
+          if (Test-Path -LiteralPath $hydraVst3) { Remove-Item -LiteralPath $hydraVst3 -Recurse -Force }
+          New-Item -ItemType Directory -Path $hydraVst3 -Force | Out-Null
+          Get-ChildItem -LiteralPath $bundle.FullName -Force | Copy-Item -Destination $hydraVst3 -Recurse -Force
+          if (Test-Path -LiteralPath 'Presets') {
+            $presetsDst = Join-Path $dist 'Presets'
+            if (Test-Path -LiteralPath $presetsDst) { Remove-Item -LiteralPath $presetsDst -Recurse -Force }
+            Copy-Item -LiteralPath 'Presets' -Destination $presetsDst -Recurse -Force
+          }
+          if (Test-Path -LiteralPath 'README.pdf') {
+            Copy-Item -LiteralPath 'README.pdf' -Destination $dist -Force
+          }
+
+      - name: Build Windows installer
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path Output -Force | Out-Null
+          iscc installer_win.iss
+
+      - name: Code sign macOS plugin bundles
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        env:
+          MACOS_CERT_PWD: ${{ secrets.MACOS_CERT_PWD }}
+        run: |
+          set -euo pipefail
+          APP_IDENTITY="$(security find-identity -v -p codesigning | awk -F\" '/Developer ID Application:/{print $2; exit}')"
+          if [ -z "${APP_IDENTITY}" ]; then
+            echo "Developer ID Application identity not found."
+            exit 1
+          fi
+          for vst3 in build/BoutiqueHydra_artefacts/Release/VST3/*.vst3; do
+            codesign --force --deep --timestamp --options runtime \
+                     --entitlements Source/entitlements.plist \
+                     --sign "${APP_IDENTITY}" "${vst3}"
+            codesign --verify --deep --strict --verbose=2 "${vst3}"
+          done
+          for component in build/BoutiqueHydra_artefacts/Release/AU/*.component; do
+            codesign --force --deep --timestamp --options runtime \
+                     --entitlements Source/entitlements.plist \
+                     --sign "${APP_IDENTITY}" "${component}"
+            codesign --verify --deep --strict --verbose=2 "${component}"
+          done
+
+      - name: Build, sign, notarize, and staple macOS pkg
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APPLE_ID}" ] || [ -z "${APPLE_ID_PWD}" ] || [ -z "${TEAM_ID}" ]; then
+            echo "Required notarization secrets are missing."
+            exit 1
+          fi
+          INSTALLER_IDENTITY="$(security find-identity -v -p basic | awk -F\" '/Developer ID Installer:/{print $2; exit}')"
+          if [ -z "${INSTALLER_IDENTITY}" ]; then
+            echo "Developer ID Installer identity not found."
+            exit 1
+          fi
+
+          mkdir -p dist
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "${VERSION}" ] || [ "${VERSION}" = "${GITHUB_REF_NAME}" ]; then
+            VERSION="1.0.0"
+          fi
+
+          VST3_COMPONENT="$(ls -d build/BoutiqueHydra_artefacts/Release/VST3/*.vst3 | head -n 1)"
+          AU_COMPONENT="$(ls -d build/BoutiqueHydra_artefacts/Release/AU/*.component | head -n 1)"
+
+          if [ -z "${VST3_COMPONENT}" ] || [ -z "${AU_COMPONENT}" ]; then
+            echo "Expected VST3/AU build outputs were not found."
+            exit 1
+          fi
+
+          pkgbuild --component "${VST3_COMPONENT}" \
+                   --identifier com.synth.hydra.vst3 \
+                   --version "${VERSION}" \
+                   --install-location /Library/Audio/Plug-Ins/VST3 \
+                   dist/Hydra_VST3.pkg
+
+          pkgbuild --component "${AU_COMPONENT}" \
+                   --identifier com.synth.hydra.au \
+                   --version "${VERSION}" \
+                   --install-location /Library/Audio/Plug-Ins/Components \
+                   dist/Hydra_AU.pkg
+
+          productbuild --synthesize \
+                       --package dist/Hydra_VST3.pkg \
+                       --package dist/Hydra_AU.pkg \
+                       dist/Distribution.xml
+
+          productbuild --distribution dist/Distribution.xml \
+                       --package-path dist \
+                       dist/Hydra_Installer_unsigned.pkg
+
+          productbuild --distribution dist/Distribution.xml \
+                       --package-path dist \
+                       dist/Hydra_Installer_unsigned.pkg \
+                       dist/Hydra_Installer.pkg
+
+      - name: Remote Plugin Validation (AU)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_DIR="/Library/Audio/Plug-Ins/Components"
+          sudo rm -rf "$TARGET_DIR/Hydra.component"
+          sudo mkdir -p "$TARGET_DIR"
+          sudo cp -R build/BoutiqueHydra_artefacts/Release/AU/Hydra.component "$TARGET_DIR/"
+          sudo xattr -cr "$TARGET_DIR/Hydra.component"
+
+          echo "--- Internal Plist Check ---"
+          plutil -p "$TARGET_DIR/Hydra.component/Contents/Info.plist" | grep -A 15 "AudioComponents"
+
+          sudo pluginkit -a "$TARGET_DIR/Hydra.component"
+          sudo killall -9 AudioComponentRegistrar || echo "Registrar not running"
+          sleep 10
+
+          # CRITICAL ADJUSTMENT: Ensure your Hydra CMake subtype and manufacturer codes match here
+          # Assuming: aumu = Synth instrument, HYDR = Subtype, BDEN = Manufacturer
+          sudo auval -v aumu HYDR BDEN
+
+      - name: Upload macOS artifacts
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hydra-macos
+          path: dist/Hydra_Installer.pkg
+          if-no-files-found: error
+
+      - name: Upload Windows artifacts
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hydra-windows-build
+          path: Output/Hydra_Setup.exe
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: hydra-*
+          merge-multiple: true
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/Hydra_Installer.pkg
+            dist/Hydra_Setup.exe
