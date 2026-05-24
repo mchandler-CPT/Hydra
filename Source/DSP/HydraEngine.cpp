@@ -73,6 +73,13 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
     adsr.setParameters (baseEnvelopeParameters);
     filterAdsr.setParameters (baseFilterEnvelopeParameters);
 
+    constexpr auto parameterSmoothingSeconds = 0.02;
+    harmonicTiltSmoothed.reset (sampleRate, parameterSmoothingSeconds);
+    harmonicInversionSmoothed.reset (sampleRate, parameterSmoothingSeconds);
+    harmonicTiltSmoothed.setCurrentAndTargetValue (0.0f);
+    harmonicInversionSmoothed.setCurrentAndTargetValue (0.0f);
+    harmonicInversionIndex = 0;
+
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
         auto& oscillator = oscillators[static_cast<size_t> (partialIndex)];
@@ -139,8 +146,9 @@ void HydraEngine::applyMacroTargets() noexcept
         ? HydraHarmonySnap::quantizeHarmonyValue (clampedHarmony)
         : clampedHarmony;
 
-    const auto packet = macroMapper.computeTargets (depth, girth, effectiveHarmonyForMapper);
+    const auto packet = macroMapper.computeTargets (depth, girth, effectiveHarmonyForMapper, harmonicInversionIndex);
     frequencyMultipliers = packet.frequencyMultipliers;
+    assignedHarmonicOrders = packet.assignedHarmonicOrders;
 
     for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
     {
@@ -286,6 +294,46 @@ void HydraEngine::setScaleMorph (float newScaleMorph) noexcept
     scaleMorph = juce::jlimit (0.0f, 1.0f, newScaleMorph);
 }
 
+int HydraEngine::harmonicInversionIndexFromParameter (float harmonicInversion) noexcept
+{
+    return juce::jlimit (0, 2, juce::roundToInt (harmonicInversion));
+}
+
+void HydraEngine::setHarmonicTiltTarget (float harmonicTilt) noexcept
+{
+    harmonicTiltSmoothed.setTargetValue (juce::jlimit (-1.0f, 1.0f, harmonicTilt));
+}
+
+void HydraEngine::setHarmonicInversionIndexTarget (int harmonicInversionIndex) noexcept
+{
+    harmonicInversionSmoothed.setTargetValue (static_cast<float> (juce::jlimit (0, 2, harmonicInversionIndex)));
+}
+
+float HydraEngine::computeHarmonicTiltGain (float harmonicMultiplier, float tilt) noexcept
+{
+    constexpr auto tiltCurve = 0.5f;
+    constexpr auto harmonicSix = 6.0f;
+    constexpr auto harmonicSeven = 7.0f;
+
+    if (tilt < 0.0f)
+        return std::exp (tilt * (harmonicMultiplier - 1.0f) * tiltCurve);
+
+    if (tilt > 0.0f)
+    {
+        auto gain = std::exp (tilt * (harmonicMultiplier - 1.0f) * tiltCurve);
+
+        if (std::abs (harmonicMultiplier - harmonicSix) < 0.01f)
+            gain *= (1.0f - tilt * 0.25f);
+
+        if (std::abs (harmonicMultiplier - harmonicSeven) < 0.01f)
+            gain *= (1.0f - tilt * 0.75f);
+
+        return gain;
+    }
+
+    return 1.0f;
+}
+
 void HydraEngine::setKbTrack (float newKbTrack) noexcept
 {
     kbTrack = juce::jlimit (0.0f, 1.0f, newKbTrack);
@@ -378,11 +426,22 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
     if (static_cast<int> (filterCutoffBuffer.size()) < numSamples)
         filterCutoffBuffer.resize (static_cast<size_t> (numSamples), 20000.0f);
 
-    applyMacroTargets();
     updateFrequencyGlideSmoothing();
+
+    applyMacroTargets();
 
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {
+        const auto nextInversionIndex =
+            harmonicInversionIndexFromParameter (harmonicInversionSmoothed.getNextValue());
+
+        if (nextInversionIndex != harmonicInversionIndex)
+        {
+            harmonicInversionIndex = nextInversionIndex;
+            applyMacroTargets();
+        }
+
+        const auto harmonicTilt = harmonicTiltSmoothed.getNextValue();
         juce::ADSR::Parameters warpedVolumeEnvelope = baseEnvelopeParameters;
         warpedVolumeEnvelope.attack = juce::jmax (0.001f, baseEnvelopeParameters.attack * (1.0f + envWarp));
         adsr.setParameters (warpedVolumeEnvelope);
@@ -425,7 +484,10 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             auto& oscillator = oscillators[index];
             auto& voice = voices[index];
 
-            const auto amplitude = voice.amplitude.getNextValue();
+            const auto baseAmplitude = voice.amplitude.getNextValue();
+            const auto tiltGain =
+                computeHarmonicTiltGain (assignedHarmonicOrders[index], harmonicTilt);
+            const auto amplitude = baseAmplitude * tiltGain;
             const auto morph = voice.morph.getNextValue();
             const auto panL = voice.panL.getNextValue();
             const auto panR = voice.panR.getNextValue();

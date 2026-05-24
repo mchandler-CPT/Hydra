@@ -26,6 +26,14 @@ constexpr const char* kHpCutoffParamId = "hpCutoff";
 constexpr const char* kKbTrackParamId = "kbTrack";
 constexpr const char* kFilterOverloadParamId = "filterOverload";
 constexpr const char* kHarmonyQuantizeParamId = "harmonyQuantize";
+
+int readHarmonicInversionIndex (const juce::AudioProcessorValueTreeState& apvts) noexcept
+{
+    if (auto* param = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (kHarmonicInversionParamId)))
+        return param->getIndex();
+
+    return 0;
+}
 } // namespace
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
@@ -184,13 +192,11 @@ void HydraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     hydraEngine.prepare (oversampledSampleRate, oversampledBlockSize);
 
     constexpr auto parameterSmoothingSeconds = 0.02;
-    harmonicTiltSmoothed.reset (sampleRate, parameterSmoothingSeconds);
-    harmonicInversionSmoothed.reset (sampleRate, parameterSmoothingSeconds);
     hpCutoffSmoothed.reset (sampleRate, parameterSmoothingSeconds);
-
-    harmonicTiltSmoothed.setCurrentAndTargetValue (harmonicTiltParam->load());
-    harmonicInversionSmoothed.setCurrentAndTargetValue (harmonicInversionParam->load());
     hpCutoffSmoothed.setCurrentAndTargetValue (hpCutoffParam->load());
+
+    hydraEngine.setHarmonicTiltTarget (harmonicTiltParam->load());
+    hydraEngine.setHarmonicInversionIndexTarget (readHarmonicInversionIndex (apvts));
 
     filterL.reset();
     filterR.reset();
@@ -251,18 +257,14 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     hydraEngine.setEnvWarp (envWarpParam->load());
     hydraEngine.setGlideTime (glideTimeParam->load());
     hydraEngine.setKbTrack (kbTrack);
+    hydraEngine.setHarmonicTiltTarget (harmonicTiltParam->load());
+    hydraEngine.setHarmonicInversionIndexTarget (readHarmonicInversionIndex (apvts));
+    hydraEngine.setFilterOverload (filterOverload);
 
-    harmonicTiltSmoothed.setTargetValue (harmonicTiltParam->load());
-    harmonicInversionSmoothed.setTargetValue (harmonicInversionParam->load());
     hpCutoffSmoothed.setTargetValue (hpCutoffParam->load());
 
     for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
-    {
-        juce::ignoreUnused (harmonicTiltSmoothed.getNextValue(),
-                            harmonicInversionSmoothed.getNextValue(),
-                            hpCutoffSmoothed.getNextValue());
-    }
-    hydraEngine.setFilterOverload (filterOverload);
+        juce::ignoreUnused (hpCutoffSmoothed.getNextValue());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
 

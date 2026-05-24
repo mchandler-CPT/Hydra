@@ -5,11 +5,23 @@
 #include <cmath>
 #include <limits>
 
-HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth, float harmony) const noexcept
+HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth,
+                                                       float girth,
+                                                       float harmony,
+                                                       int harmonicInversionIndex) const noexcept
 {
     static constexpr std::array<float, numPartials> beta { 0.00f, 0.15f, 0.30f, 0.45f, 0.60f, 0.75f, 0.90f };
     static constexpr std::array<float, numPartials> alpha { 20.0f, 18.0f, 15.0f, 12.0f, 10.0f, 8.0f, 6.0f };
     static constexpr auto centerGain = 0.707f;
+
+    static constexpr std::array<std::array<float, numPartials>, 3> harmonicOrderings {{
+        {{ 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f }},
+        {{ 1.0f, 3.0f, 2.0f, 6.0f, 4.0f, 7.0f, 5.0f }},
+        {{ 1.0f, 3.0f, 5.0f, 7.0f, 2.0f, 4.0f, 6.0f }}
+    }};
+
+    const auto inversionIndex = juce::jlimit (0, 2, harmonicInversionIndex);
+    const auto& harmonicOrdering = harmonicOrderings[static_cast<size_t> (inversionIndex)];
 
     static constexpr float harmonicRecipes[5][7] = {
         { 1.000f, 2.000f, 3.000f, 4.000f, 5.000f, 6.000f, 7.000f },
@@ -40,11 +52,14 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth,
     for (int n = 0; n < numPartials; ++n)
     {
         const auto index = static_cast<size_t> (n);
+        const auto recipeIndex = static_cast<size_t> (harmonicOrdering[index]) - 1;
+        packet.assignedHarmonicOrders[index] = harmonicOrdering[index];
 
         rawAmplitudes[index] = 1.0f / (1.0f + std::exp (-alpha[index] * (X - beta[index])));
 
-        const auto baseHarmonic = harmonicRecipes[baseIdx][n]
-                                + frac * (harmonicRecipes[baseIdx + 1][n] - harmonicRecipes[baseIdx][n]);
+        const auto baseHarmonic = harmonicRecipes[baseIdx][recipeIndex]
+                                + frac * (harmonicRecipes[baseIdx + 1][recipeIndex]
+                                          - harmonicRecipes[baseIdx][recipeIndex]);
 
         if (n == 0)
         {
@@ -95,7 +110,7 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth,
         if (X < 0.02f && n > 0)
         {
             rawAmplitudes[index] = 0.0f;
-            packet.frequencyMultipliers[index] = static_cast<float> (n + 1);
+            packet.frequencyMultipliers[index] = harmonicOrdering[index];
             packet.morphTargets[index] = 0.0f;
         }
     }
@@ -119,7 +134,7 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth, float girth,
 
         for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
             packet.frequencyMultipliers[static_cast<size_t> (partialIndex)] =
-                static_cast<float> (partialIndex + 1);
+                harmonicOrdering[static_cast<size_t> (partialIndex)];
     }
 
     return packet;

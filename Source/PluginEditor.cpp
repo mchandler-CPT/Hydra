@@ -163,6 +163,8 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     filterSustainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterSustain", filterSustainSlider);
     filterReleaseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterRelease", filterReleaseSlider);
     glideAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "glideTime", glideSlider);
+    harmonicInversionSlider.setRange (0.0, 2.0, 1.0);
+
     harmonicInversionSlider.textFromValueFunction = [] (double value)
     {
         static constexpr std::array<const char*, 3> kInversionLabels {

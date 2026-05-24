@@ -106,8 +106,6 @@ private:
     std::array<float, kFifoSize> visualFifoR {};
     std::atomic<int> fifoWriteIndex { 0 };
 
-    juce::LinearSmoothedValue<float> harmonicTiltSmoothed;
-    juce::LinearSmoothedValue<float> harmonicInversionSmoothed;
     juce::LinearSmoothedValue<float> hpCutoffSmoothed;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HydraAudioProcessor)

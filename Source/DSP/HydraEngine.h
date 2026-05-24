@@ -64,6 +64,8 @@ public:
     void setEnvWarp (float envWarp) noexcept;
     void setGlideTime (float glideTimeSeconds) noexcept;
     void setScaleMorph (float scaleMorph) noexcept;
+    void setHarmonicTiltTarget (float harmonicTilt) noexcept;
+    void setHarmonicInversionIndexTarget (int harmonicInversionIndex) noexcept;
     void setKbTrack (float kbTrack) noexcept;
     void setFilterOverload (float filterOverload) noexcept;
 
@@ -85,6 +87,9 @@ private:
     void clearAllDelayLines() noexcept;
     void updateFrequencyGlideSmoothing() noexcept;
 
+    static float computeHarmonicTiltGain (float harmonicMultiplier, float tilt) noexcept;
+    static int harmonicInversionIndexFromParameter (float harmonicInversion) noexcept;
+
     static constexpr float spectralDampingS = 0.0008f;
 
     double sampleRate = 44100.0;
@@ -100,6 +105,9 @@ private:
     float glideTimeSeconds = 0.05f;
     float appliedGlideTimeSeconds = 0.003f;
     float scaleMorph = 0.0f;
+    int harmonicInversionIndex = 0;
+    juce::LinearSmoothedValue<float> harmonicTiltSmoothed;
+    juce::LinearSmoothedValue<float> harmonicInversionSmoothed;
     float kbTrack = 0.0f;
     float filterOverload = 0.0f;
     int activeMidiNoteNumber = 69;
@@ -109,6 +117,7 @@ private:
     float baseAttackSeconds = 0.1f;
     juce::ADSR::Parameters baseFilterEnvelopeParameters { 0.1f, 0.3f, 0.7f, 0.5f };
     std::array<float, numPartials> frequencyMultipliers { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
+    std::array<float, numPartials> assignedHarmonicOrders { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
     float noteVelocity = 0.0f;
     float lastEnvelopeGain = 0.0f;
     bool noteIsActive = false;
