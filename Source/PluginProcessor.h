@@ -91,7 +91,9 @@ private:
     std::atomic<float>* egrAmountParam { nullptr };
     std::atomic<float>* envWarpParam { nullptr };
     std::atomic<float>* glideTimeParam { nullptr };
-    std::atomic<float>* scaleMorphParam { nullptr };
+    std::atomic<float>* harmonicTiltParam { nullptr };
+    std::atomic<float>* harmonicInversionParam { nullptr };
+    std::atomic<float>* hpCutoffParam { nullptr };
     std::atomic<float>* kbTrackParam { nullptr };
     std::atomic<float>* filterOverloadParam { nullptr };
     std::atomic<float>* harmonyQuantizeParam { nullptr };
@@ -103,6 +105,10 @@ private:
     std::array<float, kFifoSize> visualFifoL {};
     std::array<float, kFifoSize> visualFifoR {};
     std::atomic<int> fifoWriteIndex { 0 };
+
+    juce::LinearSmoothedValue<float> harmonicTiltSmoothed;
+    juce::LinearSmoothedValue<float> harmonicInversionSmoothed;
+    juce::LinearSmoothedValue<float> hpCutoffSmoothed;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HydraAudioProcessor)
 };

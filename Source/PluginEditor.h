@@ -28,6 +28,10 @@ private:
 
     void configureAdsrKnob (juce::Slider& slider, juce::Label& label, const juce::String& labelText);
 
+    void configureSteppedRotaryKnob (juce::Slider& slider,
+                                     juce::Label& label,
+                                     const juce::String& labelText);
+
     void updateHarmonySnapUi();
     void snapHarmonyParameterToNearestStep();
     int nearestHarmonySnapIndex (float harmonyValue) const noexcept;
@@ -69,8 +73,10 @@ private:
     juce::Slider filterSustainSlider;
     juce::Slider filterReleaseSlider;
     juce::Slider glideSlider;
-    juce::Slider scaleMorphSlider;
+    juce::Slider harmonicInversionSlider;
+    juce::Slider harmonicTiltSlider;
     juce::Slider kbTrackSlider;
+    juce::Slider hpCutoffSlider;
     juce::Slider overloadSlider;
 
     juce::Label envWarpLabel;
@@ -84,8 +90,10 @@ private:
     juce::Label filterSustainLabel;
     juce::Label filterReleaseLabel;
     juce::Label glideLabel;
-    juce::Label scaleMorphLabel;
+    juce::Label harmonicInversionLabel;
+    juce::Label harmonicTiltLabel;
     juce::Label kbTrackLabel;
+    juce::Label hpCutoffLabel;
     juce::Label overloadLabel;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> envWarpAttachment;
@@ -99,8 +107,10 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterSustainAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterReleaseAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> glideAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> scaleMorphAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> harmonicInversionAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> harmonicTiltAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> kbTrackAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> hpCutoffAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> overloadAttachment;
 
     juce::MidiKeyboardComponent keyboardComponent;

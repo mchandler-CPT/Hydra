@@ -20,7 +20,9 @@ constexpr const char* kFilterReleaseParamId = "filterRelease";
 constexpr const char* kEgrAmountParamId = "egrAmount";
 constexpr const char* kEnvWarpParamId = "envWarp";
 constexpr const char* kGlideTimeParamId = "glideTime";
-constexpr const char* kScaleMorphParamId = "scaleMorph";
+constexpr const char* kHarmonicTiltParamId = "harmonicTilt";
+constexpr const char* kHarmonicInversionParamId = "harmonicInversion";
+constexpr const char* kHpCutoffParamId = "hpCutoff";
 constexpr const char* kKbTrackParamId = "kbTrack";
 constexpr const char* kFilterOverloadParamId = "filterOverload";
 constexpr const char* kHarmonyQuantizeParamId = "harmonyQuantize";
@@ -32,6 +34,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
     juce::NormalisableRange<float> attackRange (0.001f, 5.0f, 0.0f, 0.5f);
     juce::NormalisableRange<float> decayRange (0.01f, 5.0f, 0.0f, 0.5f);
     juce::NormalisableRange<float> releaseRange (0.01f, 10.0f, 0.0f, 0.5f);
+    juce::NormalisableRange<float> hpCutoffRange (20.0f, 2000.0f, 0.0f, 0.35f);
 
     return {
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kDepthParamId, 1 },
@@ -102,10 +105,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
                                                      "Glide Time",
                                                      juce::NormalisableRange<float> { 0.0f, 2.0f, 0.001f },
                                                      0.05f),
-        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kScaleMorphParamId, 1 },
-                                                     "Scale Morph",
-                                                     juce::NormalisableRange<float> { 0.0f, 1.0f, 0.01f },
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kHarmonicTiltParamId, 1 },
+                                                     "Harmonic Tilt",
+                                                     juce::NormalisableRange<float> { -1.0f, 1.0f },
                                                      0.0f),
+        std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kHarmonicInversionParamId, 1 },
+                                                      "Harmonic Inversion",
+                                                      juce::StringArray { "Linear (1-7)",
+                                                                          "Overtone Shuffle (1,3,2,6,4,7,5)",
+                                                                          "Odd/Prime Focus" },
+                                                      0),
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kHpCutoffParamId, 1 },
+                                                     "HP Cutoff",
+                                                     hpCutoffRange,
+                                                     35.0f),
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kKbTrackParamId, 1 },
                                                      "KB Tracking",
                                                      juce::NormalisableRange<float> { 0.0f, 1.0f, 0.01f },
@@ -149,7 +162,9 @@ HydraAudioProcessor::HydraAudioProcessor()
     egrAmountParam = apvts.getRawParameterValue (kEgrAmountParamId);
     envWarpParam = apvts.getRawParameterValue (kEnvWarpParamId);
     glideTimeParam = apvts.getRawParameterValue (kGlideTimeParamId);
-    scaleMorphParam = apvts.getRawParameterValue (kScaleMorphParamId);
+    harmonicTiltParam = apvts.getRawParameterValue (kHarmonicTiltParamId);
+    harmonicInversionParam = apvts.getRawParameterValue (kHarmonicInversionParamId);
+    hpCutoffParam = apvts.getRawParameterValue (kHpCutoffParamId);
     kbTrackParam = apvts.getRawParameterValue (kKbTrackParamId);
     filterOverloadParam = apvts.getRawParameterValue (kFilterOverloadParamId);
     harmonyQuantizeParam = apvts.getRawParameterValue (kHarmonyQuantizeParamId);
@@ -167,6 +182,15 @@ void HydraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     const auto oversampledBlockSize = static_cast<int> (samplesPerBlock * oversampler->getOversamplingFactor());
     hydraEngine.prepare (oversampledSampleRate, oversampledBlockSize);
+
+    constexpr auto parameterSmoothingSeconds = 0.02;
+    harmonicTiltSmoothed.reset (sampleRate, parameterSmoothingSeconds);
+    harmonicInversionSmoothed.reset (sampleRate, parameterSmoothingSeconds);
+    hpCutoffSmoothed.reset (sampleRate, parameterSmoothingSeconds);
+
+    harmonicTiltSmoothed.setCurrentAndTargetValue (harmonicTiltParam->load());
+    harmonicInversionSmoothed.setCurrentAndTargetValue (harmonicInversionParam->load());
+    hpCutoffSmoothed.setCurrentAndTargetValue (hpCutoffParam->load());
 
     filterL.reset();
     filterR.reset();
@@ -226,8 +250,18 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     hydraEngine.setEgrAmount (egrAmountParam->load());
     hydraEngine.setEnvWarp (envWarpParam->load());
     hydraEngine.setGlideTime (glideTimeParam->load());
-    hydraEngine.setScaleMorph (scaleMorphParam->load());
     hydraEngine.setKbTrack (kbTrack);
+
+    harmonicTiltSmoothed.setTargetValue (harmonicTiltParam->load());
+    harmonicInversionSmoothed.setTargetValue (harmonicInversionParam->load());
+    hpCutoffSmoothed.setTargetValue (hpCutoffParam->load());
+
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+    {
+        juce::ignoreUnused (harmonicTiltSmoothed.getNextValue(),
+                            harmonicInversionSmoothed.getNextValue(),
+                            hpCutoffSmoothed.getNextValue());
+    }
     hydraEngine.setFilterOverload (filterOverload);
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);

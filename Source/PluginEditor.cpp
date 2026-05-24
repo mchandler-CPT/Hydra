@@ -7,39 +7,41 @@
 namespace
 {
 constexpr int kEditorWidth = 750;
-constexpr int kControlPanelHeight = 560;
-constexpr int kEditorHeight = 630;
 constexpr int kKeyboardHeight = 70;
-constexpr int kColumnWidth = 125;
+constexpr int kControlPanelHeight = 700;
+constexpr int kEditorHeight = kControlPanelHeight + kKeyboardHeight;
+constexpr int kColumnWidth = 118;
 constexpr int kLabelBandHeight = 24;
 constexpr int kCutoffTextBoxWidth = 70;
 constexpr int kCutoffTextBoxHeight = 18;
 constexpr int kControlColumnBottomInset = 22;
-constexpr int kRotaryBodyHeight = 84;
+constexpr int kRotaryBodyHeight = 72;
 constexpr int kRotarySliderWithReadoutHeight = kRotaryBodyHeight + kCutoffTextBoxHeight;
-constexpr int kTopKnobRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + kControlColumnBottomInset;
-constexpr int kBottomKnobRowHeight = kLabelBandHeight + kRotaryBodyHeight + kControlColumnBottomInset;
+constexpr int kKnobRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + kControlColumnBottomInset;
 constexpr int kPanelHorizontalMargin = 10;
+constexpr int kPanelTopMargin = 8;
 constexpr int kPanelBottomMargin = 10;
-constexpr int kXyPadY = 15;
-constexpr int kXyPadSize = 220;
-constexpr int kXyPadRightMargin = 10;
-constexpr int kUtilityKnobRowGap = 6;
-constexpr int kUtilityKnobRowTop = kTopKnobRowHeight + kUtilityKnobRowGap;
-constexpr int kUtilityKnobRowHeight = kBottomKnobRowHeight;
-constexpr int kEnvelopeSectionTop = kUtilityKnobRowTop + kUtilityKnobRowHeight + kUtilityKnobRowGap;
-constexpr int kEnvWarpColumnX = 15;
+constexpr int kZoneGap = 8;
+constexpr int kZoneDividerInset = 14;
+constexpr int kHarmonicSubRowGap = 6;
+constexpr int kHarmonicSubRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + 10;
+constexpr int kHarmonicSideStackHeight = (2 * kHarmonicSubRowHeight) + kHarmonicSubRowGap;
+constexpr int kXyPadSize = kHarmonicSideStackHeight;
+constexpr int kHarmonicZoneHeight = kPanelTopMargin + kHarmonicSideStackHeight + 24;
+constexpr int kHarmonicZone1Top = kPanelTopMargin;
+constexpr int kModulationZoneTop = kHarmonicZone1Top + kHarmonicZoneHeight + kZoneGap;
+constexpr int kModulationZoneHeight = kKnobRowHeight;
+constexpr int kEnvelopeZoneTop = kModulationZoneTop + kModulationZoneHeight + kZoneGap;
 constexpr int kEnvelopeGroupPadding = 6;
 constexpr int kInnerEnvelopeGap = 8;
 constexpr int kEnvelopeInnerPadding = 10;
 constexpr int kEnvelopeBottomInset = 6;
-constexpr int kEnvelopeFooterPadding = 22;
-constexpr int kEnvelopeKnobLabelHeight = 20;
-constexpr int kEnvelopeKnobMinSize = 72;
-constexpr int kHarmonyColumnX = 15 + kXyPadSize + kXyPadRightMargin;
-constexpr int kCutoffColumnX = kHarmonyColumnX + kColumnWidth;
-constexpr int kResColumnX = kCutoffColumnX + kColumnWidth;
-constexpr int kGainColumnX = kResColumnX + kColumnWidth;
+constexpr int kEnvelopeFooterPadding = 18;
+constexpr int kEnvelopeKnobLabelHeight = kLabelBandHeight;
+constexpr int kEnvelopeKnobSize = kRotaryBodyHeight;
+constexpr int kEnvelopeRowHeight = kEnvelopeKnobLabelHeight + kEnvelopeKnobSize + kEnvelopeBottomInset + 12;
+constexpr int kVolumeEnvelopeRowHeight = kEnvelopeRowHeight - 8;
+constexpr int kFilterEnvelopeRowHeight = kEnvelopeRowHeight + 8;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
 constexpr int kHarmonySnapButtonWidth = 46;
 constexpr int kHarmonySnapLabelHeight = 18;
@@ -64,10 +66,7 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     addAndMakeVisible (keyboardComponent);
     addAndMakeVisible (xyExplorer);
 
-    envelopeControlGroup.setText ("ENVELOPE CONTROL");
-    envelopeControlGroup.setColour (juce::GroupComponent::outlineColourId, juce::Colour (0xff6a6560));
-    envelopeControlGroup.setColour (juce::GroupComponent::textColourId, juce::Colour (kMutedLabelColour));
-    addAndMakeVisible (envelopeControlGroup);
+    envelopeControlGroup.setVisible (false);
     volumeEnvelopeGroup.setText ("VOLUME");
     volumeEnvelopeGroup.setColour (juce::GroupComponent::outlineColourId, juce::Colour (0xff6a6560));
     volumeEnvelopeGroup.setColour (juce::GroupComponent::textColourId, juce::Colour (kMutedLabelColour));
@@ -95,9 +94,12 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     configureRotaryKnob (filterCutoffSlider, filterCutoffLabel, "FILTER CUTOFF", true, " Hz");
     configureRotaryKnob (filterResSlider, filterResLabel, "RESONANCE", true);
     configureRotaryKnob (gainSlider, gainLabel, "MASTER GAIN", false);
-    configureRotaryKnob (glideSlider, glideLabel, "GLIDE TIME", false);
-    configureRotaryKnob (scaleMorphSlider, scaleMorphLabel, "SCALE MORPH", false);
-    configureRotaryKnob (kbTrackSlider, kbTrackLabel, "KB TRACKING", false);
+    configureRotaryKnob (glideSlider, glideLabel, "GLIDE", false);
+    configureSteppedRotaryKnob (harmonicInversionSlider, harmonicInversionLabel, "INVERSION");
+    configureRotaryKnob (harmonicTiltSlider, harmonicTiltLabel, "HARMONIC TILT", true);
+    harmonicTiltSlider.setDoubleClickReturnValue (true, 0.0);
+    configureRotaryKnob (kbTrackSlider, kbTrackLabel, "KB TRACK", false);
+    configureRotaryKnob (hpCutoffSlider, hpCutoffLabel, "HP CUTOFF", true, " Hz");
     configureRotaryKnob (overloadSlider, overloadLabel, "OVERLOAD", false);
 
     configureAdsrKnob (envWarpSlider, envWarpLabel, "ENV WARP");
@@ -161,8 +163,24 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     filterSustainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterSustain", filterSustainSlider);
     filterReleaseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterRelease", filterReleaseSlider);
     glideAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "glideTime", glideSlider);
-    scaleMorphAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "scaleMorph", scaleMorphSlider);
+    harmonicInversionSlider.textFromValueFunction = [] (double value)
+    {
+        static constexpr std::array<const char*, 3> kInversionLabels {
+            "LINEAR",
+            "SHUFFLE",
+            "ODD/PRIME"
+        };
+
+        const auto index = juce::jlimit (0, 2, juce::roundToInt (value));
+        return juce::String { kInversionLabels[static_cast<size_t> (index)] };
+    };
+
+    harmonicInversionAttachment =
+        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "harmonicInversion", harmonicInversionSlider);
+    harmonicTiltAttachment =
+        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "harmonicTilt", harmonicTiltSlider);
     kbTrackAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "kbTrack", kbTrackSlider);
+    hpCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "hpCutoff", hpCutoffSlider);
     overloadAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterOverload", overloadSlider);
 }
 
@@ -243,6 +261,23 @@ void HydraAudioProcessorEditor::updateHarmonySnapUi()
         harmonySnapValueLabel.setText ({}, juce::dontSendNotification);
 }
 
+void HydraAudioProcessorEditor::configureSteppedRotaryKnob (juce::Slider& slider,
+                                                             juce::Label& label,
+                                                             const juce::String& labelText)
+{
+    slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
+    slider.setTextBoxStyle (juce::Slider::TextBoxBelow, true, kCutoffTextBoxWidth, kCutoffTextBoxHeight);
+    slider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
+    slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible (slider);
+
+    label.setText (labelText, juce::dontSendNotification);
+    label.setJustificationType (juce::Justification::centred);
+    label.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (label);
+}
+
 void HydraAudioProcessorEditor::configureAdsrKnob (juce::Slider& slider,
                                                     juce::Label& label,
                                                     const juce::String& labelText)
@@ -261,10 +296,38 @@ void HydraAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (juce::Colour (0xff161412));
 
+    const auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
+    const auto dividerX0 = kPanelHorizontalMargin + kZoneDividerInset;
+    const auto dividerX1 = getWidth() - kPanelHorizontalMargin - kZoneDividerInset;
+
+    const auto drawZoneDivider = [&] (int y)
+    {
+        g.setColour (juce::Colour (0xff2a2622));
+        g.drawHorizontalLine (y, static_cast<float> (dividerX0), static_cast<float> (dividerX1));
+    };
+
+    drawZoneDivider (kModulationZoneTop - (kZoneGap / 2));
+    drawZoneDivider (kEnvelopeZoneTop - (kZoneGap / 2));
+
+    g.setColour (juce::Colour (0xff6a6560).withAlpha (0.55f));
+    g.setFont (juce::Font (juce::FontOptions { 9.0f, juce::Font::bold }));
+    g.drawText ("HARMONIC ENGINE",
+                juce::Rectangle<int> (dividerX0, kHarmonicZone1Top, 160, 14),
+                juce::Justification::centredLeft,
+                true);
+    g.drawText ("GLOBAL MODULATION & FILTERS",
+                juce::Rectangle<int> (dividerX0, kModulationZoneTop - 2, 240, 14),
+                juce::Justification::centredLeft,
+                true);
+    g.drawText ("ENVELOPES",
+                juce::Rectangle<int> (dividerX0, kEnvelopeZoneTop - 2, 120, 14),
+                juce::Justification::centredLeft,
+                true);
+
     g.setColour (juce::Colour (0xff6a6560));
     g.setFont (juce::Font (juce::FontOptions { 10.0f }));
     g.drawText ("THE HYDRA — HARMONIC SCAFFOLD SYNTH",
-                getLocalBounds().withHeight (kControlPanelHeight).reduced (10).removeFromBottom (18),
+                controlPanel.reduced (10).removeFromBottom (18),
                 juce::Justification::bottomRight,
                 true);
 }
@@ -272,75 +335,136 @@ void HydraAudioProcessorEditor::paint (juce::Graphics& g)
 void HydraAudioProcessorEditor::resized()
 {
     keyboardComponent.setBounds (0, kControlPanelHeight, kEditorWidth, kKeyboardHeight);
-    xyExplorer.setBounds (15, kXyPadY, kXyPadSize, kXyPadSize);
 
     auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
-    const auto topKnobRow = controlPanel.withHeight (kTopKnobRowHeight);
 
-    const auto envelopeGroupTop = kEnvelopeSectionTop - kEnvelopeGroupPadding;
-    const auto envelopeGroupBottom = juce::jmin (kControlPanelHeight - (kPanelBottomMargin + kEnvelopeFooterPadding),
-                                                 kControlPanelHeight - (kPanelBottomMargin + kEnvelopeFooterPadding));
-    const auto envelopeGroupBounds = juce::Rectangle<int>::leftTopRightBottom (kPanelHorizontalMargin,
-                                                                               envelopeGroupTop,
-                                                                               kEditorWidth - kPanelHorizontalMargin,
-                                                                               envelopeGroupBottom);
-    envelopeControlGroup.setBounds (envelopeGroupBounds);
-    envelopeControlGroup.toBack();
-    volumeEnvelopeGroup.toBack();
-    filterEnvelopeGroup.toBack();
+    const auto harmonicZone = controlPanel.withY (kHarmonicZone1Top).withHeight (kHarmonicZoneHeight);
+    const auto harmonicStackTop = harmonicZone.getY() + 14;
+    const auto xyPadX = (getWidth() - kXyPadSize) / 2;
+    const auto sideGap = 10;
 
-    const auto placeKnobColumn = [] (juce::Rectangle<int> rowBand,
-                                     int x,
+    xyExplorer.setBounds (xyPadX, harmonicStackTop, kXyPadSize, kHarmonicSideStackHeight);
+    xyExplorer.toBack();
+
+    auto leftHarmonicCluster = juce::Rectangle<int> (kPanelHorizontalMargin,
+                                                   harmonicStackTop,
+                                                   xyPadX - kPanelHorizontalMargin - sideGap,
+                                                   kHarmonicSideStackHeight);
+    auto rightHarmonicCluster = juce::Rectangle<int> (xyPadX + kXyPadSize + sideGap,
+                                                      harmonicStackTop,
+                                                      getWidth() - (xyPadX + kXyPadSize + sideGap) - kPanelHorizontalMargin,
+                                                      kHarmonicSideStackHeight);
+
+    const auto placeKnobColumn = [] (juce::Rectangle<int> column,
                                      juce::Slider& slider,
                                      juce::Label& label,
-                                     int sliderHeight)
+                                     int sliderHeight,
+                                     bool compact = false)
     {
-        auto column = rowBand.withX (x).withWidth (kColumnWidth);
         label.setBounds (column.removeFromTop (kLabelBandHeight));
-        column.removeFromBottom (kControlColumnBottomInset);
+        column.removeFromBottom (compact ? 6 : kControlColumnBottomInset);
         slider.setBounds (column.removeFromTop (juce::jmin (sliderHeight, column.getHeight())));
     };
 
+    const auto bringHarmonicControlsToFront = [&]
     {
-        auto harmonyColumn = topKnobRow.withX (kHarmonyColumnX).withWidth (kColumnWidth);
-        auto labelRow = harmonyColumn.removeFromTop (kLabelBandHeight);
+        harmonySlider.toFront (false);
+        harmonyLabel.toFront (false);
+        harmonyQuantizeButton.toFront (false);
+        harmonySnapValueLabel.toFront (false);
+        harmonicInversionSlider.toFront (false);
+        harmonicInversionLabel.toFront (false);
+        harmonicTiltSlider.toFront (false);
+        harmonicTiltLabel.toFront (false);
+        glideSlider.toFront (false);
+        glideLabel.toFront (false);
+        overloadSlider.toFront (false);
+        overloadLabel.toFront (false);
+        gainSlider.toFront (false);
+        gainLabel.toFront (false);
+    };
+
+    {
+        auto harmonyRow = leftHarmonicCluster.removeFromTop (kHarmonicSubRowHeight);
+        leftHarmonicCluster.removeFromTop (kHarmonicSubRowGap);
+        auto bottomRow = leftHarmonicCluster;
+
+        auto labelRow = harmonyRow.removeFromTop (kLabelBandHeight);
         harmonyQuantizeButton.setBounds (labelRow.removeFromRight (kHarmonySnapButtonWidth).reduced (2, 4));
         harmonyLabel.setBounds (labelRow);
-        harmonyColumn.removeFromBottom (kControlColumnBottomInset);
-        harmonySnapValueLabel.setBounds (harmonyColumn.removeFromBottom (kHarmonySnapLabelHeight));
-        harmonySlider.setBounds (harmonyColumn.removeFromTop (juce::jmin (kRotaryBodyHeight, harmonyColumn.getHeight())));
+        harmonyRow.removeFromBottom (kHarmonySnapLabelHeight + 4);
+        harmonySnapValueLabel.setBounds (harmonyRow.removeFromBottom (kHarmonySnapLabelHeight));
+        harmonySlider.setBounds (harmonyRow.withSizeKeepingCentre (kColumnWidth, kEnvelopeKnobSize));
+
+        const auto bottomColumnWidth = bottomRow.getWidth() / 2;
+        auto inversionColumn = bottomRow.removeFromLeft (bottomColumnWidth);
+        auto tiltColumn = bottomRow;
+        placeKnobColumn (inversionColumn,
+                         harmonicInversionSlider,
+                         harmonicInversionLabel,
+                         kRotarySliderWithReadoutHeight,
+                         true);
+        placeKnobColumn (tiltColumn,
+                         harmonicTiltSlider,
+                         harmonicTiltLabel,
+                         kRotarySliderWithReadoutHeight,
+                         true);
     }
-    placeKnobColumn (topKnobRow, kCutoffColumnX, filterCutoffSlider, filterCutoffLabel, kRotarySliderWithReadoutHeight);
-    placeKnobColumn (topKnobRow, kResColumnX, filterResSlider, filterResLabel, kRotarySliderWithReadoutHeight);
-    placeKnobColumn (topKnobRow, kGainColumnX, gainSlider, gainLabel, kRotaryBodyHeight);
 
-    const auto utilityKnobRow = controlPanel.withY (kUtilityKnobRowTop)
-                                               .withHeight (kUtilityKnobRowHeight);
-    placeKnobColumn (utilityKnobRow, kHarmonyColumnX, glideSlider, glideLabel, kRotaryBodyHeight);
-    placeKnobColumn (utilityKnobRow, kCutoffColumnX, scaleMorphSlider, scaleMorphLabel, kRotaryBodyHeight);
-    placeKnobColumn (utilityKnobRow, kResColumnX, kbTrackSlider, kbTrackLabel, kRotaryBodyHeight);
-    placeKnobColumn (utilityKnobRow, kGainColumnX, overloadSlider, overloadLabel, kRotaryBodyHeight);
+    {
+        auto gainRow = rightHarmonicCluster.removeFromTop (kHarmonicSubRowHeight);
+        rightHarmonicCluster.removeFromTop (kHarmonicSubRowGap);
+        auto bottomRow = rightHarmonicCluster;
 
-    auto envelopeArea = envelopeGroupBounds.reduced (10, 16);
-    constexpr int kEnvelopeGridColumns = 5;
-    const int pillarWidth = envelopeArea.getWidth() / kEnvelopeGridColumns;
-    auto leftPillar = envelopeArea.removeFromLeft (pillarWidth);
-    auto envWarpCell = leftPillar.removeFromTop ((leftPillar.getHeight() - kInnerEnvelopeGap) / 2);
-    leftPillar.removeFromTop (kInnerEnvelopeGap);
-    auto egrCell = leftPillar;
+        placeKnobColumn (gainRow, gainSlider, gainLabel, kRotaryBodyHeight, true);
 
-    envWarpLabel.setBounds (envWarpCell.removeFromTop (kLabelBandHeight));
-    envWarpSlider.setBounds (envWarpCell.reduced (0, 2));
-    egrAmountLabel.setBounds (egrCell.removeFromTop (kLabelBandHeight));
-    egrAmountSlider.setBounds (egrCell.reduced (0, 2));
+        const auto bottomColumnWidth = bottomRow.getWidth() / 2;
+        auto glideColumn = bottomRow.removeFromLeft (bottomColumnWidth);
+        auto overloadColumn = bottomRow;
+        placeKnobColumn (glideColumn, glideSlider, glideLabel, kRotaryBodyHeight, true);
+        placeKnobColumn (overloadColumn, overloadSlider, overloadLabel, kRotaryBodyHeight, true);
+    }
 
-    envelopeArea.removeFromLeft (6);
+    bringHarmonicControlsToFront();
 
-    const auto totalInnerHeight = envelopeArea.getHeight();
-    const auto eachBoxHeight = (totalInnerHeight - kInnerEnvelopeGap) / 2;
-    auto volumeBoxBounds = envelopeArea.removeFromTop (eachBoxHeight);
-    envelopeArea.removeFromTop (kInnerEnvelopeGap);
-    auto filterBoxBounds = envelopeArea.removeFromTop (eachBoxHeight);
+    const auto modulationRow = controlPanel.withY (kModulationZoneTop + 12).withHeight (kModulationZoneHeight);
+    const auto modulationInnerWidth = getWidth() - (2 * kPanelHorizontalMargin);
+    const auto modulationColumnWidth = modulationInnerWidth / 6;
+
+    const auto placeModulationColumn = [&] (int columnIndex,
+                                            juce::Slider& slider,
+                                            juce::Label& label,
+                                            int sliderHeight)
+    {
+        auto column = modulationRow.withX (kPanelHorizontalMargin + (columnIndex * modulationColumnWidth))
+                                   .withWidth (modulationColumnWidth);
+        placeKnobColumn (column, slider, label, sliderHeight);
+    };
+
+    placeModulationColumn (0, filterCutoffSlider, filterCutoffLabel, kRotarySliderWithReadoutHeight);
+    placeModulationColumn (1, filterResSlider, filterResLabel, kRotarySliderWithReadoutHeight);
+    placeModulationColumn (2, kbTrackSlider, kbTrackLabel, kRotaryBodyHeight);
+    placeModulationColumn (3, hpCutoffSlider, hpCutoffLabel, kRotarySliderWithReadoutHeight);
+    placeModulationColumn (4, egrAmountSlider, egrAmountLabel, kRotaryBodyHeight);
+    placeModulationColumn (5, envWarpSlider, envWarpLabel, kRotaryBodyHeight);
+
+    const auto envelopeAreaTop = kEnvelopeZoneTop + 8;
+    const auto envelopeAreaBottom = kControlPanelHeight - (kPanelBottomMargin + kEnvelopeFooterPadding);
+    auto envelopeArea = juce::Rectangle<int>::leftTopRightBottom (kPanelHorizontalMargin,
+                                                                  envelopeAreaTop,
+                                                                  kEditorWidth - kPanelHorizontalMargin,
+                                                                  envelopeAreaBottom)
+                            .reduced (4, 4);
+
+    volumeEnvelopeGroup.toBack();
+    filterEnvelopeGroup.toBack();
+
+    const auto envelopeStackHeight = kVolumeEnvelopeRowHeight + kInnerEnvelopeGap + kFilterEnvelopeRowHeight;
+    auto envelopeStack = envelopeArea.withHeight (envelopeStackHeight)
+                                      .withCentre (envelopeArea.getCentre());
+    auto volumeBoxBounds = envelopeStack.removeFromTop (kVolumeEnvelopeRowHeight);
+    envelopeStack.removeFromTop (kInnerEnvelopeGap);
+    auto filterBoxBounds = envelopeStack;
 
     volumeEnvelopeGroup.setBounds (volumeBoxBounds);
     filterEnvelopeGroup.setBounds (filterBoxBounds);
@@ -351,7 +475,7 @@ void HydraAudioProcessorEditor::resized()
                                      juce::Slider& s3, juce::Label& l3,
                                      juce::Slider& s4, juce::Label& l4)
     {
-        auto row = groupBounds.reduced (kEnvelopeInnerPadding, 18);
+        auto row = groupBounds.reduced (kEnvelopeInnerPadding, 14);
         const int columnWidth = row.getWidth() / 4;
 
         auto placeLocalColumn = [columnWidth] (juce::Rectangle<int>& r, juce::Slider& slider, juce::Label& label)
@@ -359,9 +483,7 @@ void HydraAudioProcessorEditor::resized()
             auto col = r.removeFromLeft (columnWidth);
             label.setBounds (col.removeFromTop (kEnvelopeKnobLabelHeight));
             col.removeFromBottom (kEnvelopeBottomInset);
-            auto knobArea = col.reduced (4, 0);
-            const auto knobSize = juce::jmax (kEnvelopeKnobMinSize, juce::jmin (knobArea.getWidth(), knobArea.getHeight()));
-            slider.setBounds (juce::Rectangle<int> (knobSize, knobSize).withCentre (knobArea.getCentre()));
+            slider.setBounds (juce::Rectangle<int> (kEnvelopeKnobSize, kEnvelopeKnobSize).withCentre (col.getCentre()));
         };
 
         placeLocalColumn (row, s1, l1);
