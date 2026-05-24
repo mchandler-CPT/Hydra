@@ -71,6 +71,8 @@ private:
     HydraEngine hydraEngine;
     ZdfLadderFilter filterL;
     ZdfLadderFilter filterR;
+    juce::dsp::StateVariableTPTFilter<float> mHpFilterL;
+    juce::dsp::StateVariableTPTFilter<float> mHpFilterR;
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     juce::AudioProcessorValueTreeState apvts;
 
@@ -106,7 +108,7 @@ private:
     std::array<float, kFifoSize> visualFifoR {};
     std::atomic<int> fifoWriteIndex { 0 };
 
-    juce::LinearSmoothedValue<float> hpCutoffSmoothed;
+    juce::LinearSmoothedValue<float> mSmoothedHpCutoff;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HydraAudioProcessor)
 };

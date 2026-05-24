@@ -311,24 +311,41 @@ void HydraEngine::setHarmonicInversionIndexTarget (int harmonicInversionIndex) n
 
 float HydraEngine::computeHarmonicTiltGain (float harmonicMultiplier, float tilt) noexcept
 {
-    constexpr auto tiltCurve = 0.5f;
+    constexpr auto negativeTiltCurve = 0.38f;
     constexpr auto harmonicSix = 6.0f;
     constexpr auto harmonicSeven = 7.0f;
 
     if (tilt < 0.0f)
-        return std::exp (tilt * (harmonicMultiplier - 1.0f) * tiltCurve);
+        return std::exp (tilt * (harmonicMultiplier - 1.0f) * negativeTiltCurve);
 
     if (tilt > 0.0f)
     {
-        auto gain = std::exp (tilt * (harmonicMultiplier - 1.0f) * tiltCurve);
+        const auto harmonicOrder = harmonicMultiplier;
+        const auto isFundamental = std::abs (harmonicOrder - 1.0f) < 0.01f;
 
-        if (std::abs (harmonicMultiplier - harmonicSix) < 0.01f)
-            gain *= (1.0f - tilt * 0.25f);
+        float tiltWeight;
 
-        if (std::abs (harmonicMultiplier - harmonicSeven) < 0.01f)
-            gain *= (1.0f - tilt * 0.75f);
+        if (isFundamental)
+        {
+            tiltWeight = juce::jmax (0.05f, 1.0f - tilt * 0.90f);
+        }
+        else if (harmonicOrder <= 3.01f)
+        {
+            const auto lowHarmonicBias = (4.0f - harmonicOrder) / 3.0f;
+            tiltWeight = 1.0f - tilt * 0.55f * lowHarmonicBias;
+        }
+        else
+        {
+            tiltWeight = 1.0f + tilt * std::pow (harmonicOrder - 1.0f, 0.60f) * 0.22f;
+        }
 
-        return gain;
+        if (std::abs (harmonicOrder - harmonicSix) < 0.01f)
+            tiltWeight *= (1.0f - tilt * 0.25f);
+
+        if (std::abs (harmonicOrder - harmonicSeven) < 0.01f)
+            tiltWeight *= (1.0f - tilt * 0.65f);
+
+        return juce::jmax (0.01f, tiltWeight);
     }
 
     return 1.0f;
@@ -477,6 +494,32 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesLeft {};
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesRight {};
+        std::array<float, numPartials> baseAmplitudes {};
+        std::array<float, numPartials> tiltWeights {};
+
+        for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
+        {
+            const auto index = static_cast<size_t> (partialIndex);
+            baseAmplitudes[index] = voices[index].amplitude.getNextValue();
+            tiltWeights[index] =
+                computeHarmonicTiltGain (assignedHarmonicOrders[index], harmonicTilt);
+        }
+
+        auto energyBeforeTilt = 0.0f;
+        auto energyAfterTilt = 0.0f;
+
+        for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
+        {
+            const auto index = static_cast<size_t> (partialIndex);
+            const auto baseAmplitude = baseAmplitudes[index];
+            const auto tiltedAmplitude = baseAmplitude * tiltWeights[index];
+            energyBeforeTilt += baseAmplitude * baseAmplitude;
+            energyAfterTilt += tiltedAmplitude * tiltedAmplitude;
+        }
+
+        const auto tiltEnergyNorm = energyAfterTilt > 1.0e-12f
+                                      ? std::sqrt (energyBeforeTilt / energyAfterTilt)
+                                      : 1.0f;
 
         for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
         {
@@ -484,10 +527,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             auto& oscillator = oscillators[index];
             auto& voice = voices[index];
 
-            const auto baseAmplitude = voice.amplitude.getNextValue();
-            const auto tiltGain =
-                computeHarmonicTiltGain (assignedHarmonicOrders[index], harmonicTilt);
-            const auto amplitude = baseAmplitude * tiltGain;
+            const auto amplitude = baseAmplitudes[index] * tiltWeights[index] * tiltEnergyNorm;
             const auto morph = voice.morph.getNextValue();
             const auto panL = voice.panL.getNextValue();
             const auto panR = voice.panR.getNextValue();

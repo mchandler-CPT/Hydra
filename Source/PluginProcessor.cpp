@@ -192,8 +192,21 @@ void HydraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     hydraEngine.prepare (oversampledSampleRate, oversampledBlockSize);
 
     constexpr auto parameterSmoothingSeconds = 0.02;
-    hpCutoffSmoothed.reset (sampleRate, parameterSmoothingSeconds);
-    hpCutoffSmoothed.setCurrentAndTargetValue (hpCutoffParam->load());
+
+    juce::dsp::ProcessSpec hpFilterSpec;
+    hpFilterSpec.sampleRate = oversampledSampleRate;
+    hpFilterSpec.maximumBlockSize = static_cast<juce::uint32> (oversampledBlockSize);
+    hpFilterSpec.numChannels = 1;
+
+    mHpFilterL.prepare (hpFilterSpec);
+    mHpFilterR.prepare (hpFilterSpec);
+    mHpFilterL.setType (juce::dsp::StateVariableTPTFilterType::highpass);
+    mHpFilterR.setType (juce::dsp::StateVariableTPTFilterType::highpass);
+    mHpFilterL.reset();
+    mHpFilterR.reset();
+
+    mSmoothedHpCutoff.reset (oversampledSampleRate, parameterSmoothingSeconds);
+    mSmoothedHpCutoff.setCurrentAndTargetValue (hpCutoffParam->load());
 
     hydraEngine.setHarmonicTiltTarget (harmonicTiltParam->load());
     hydraEngine.setHarmonicInversionIndexTarget (readHarmonicInversionIndex (apvts));
@@ -261,10 +274,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     hydraEngine.setHarmonicInversionIndexTarget (readHarmonicInversionIndex (apvts));
     hydraEngine.setFilterOverload (filterOverload);
 
-    hpCutoffSmoothed.setTargetValue (hpCutoffParam->load());
-
-    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
-        juce::ignoreUnused (hpCutoffSmoothed.getNextValue());
+    mSmoothedHpCutoff.setTargetValue (hpCutoffParam->load());
 
     keyboardState.processNextMidiBuffer (midiMessages, 0, buffer.getNumSamples(), true);
 
@@ -312,10 +322,21 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
         hydraEngine.applyFilterOverload (leftChannel, rightChannel, osNumSamples);
 
+        for (int sample = 0; sample < osNumSamples; ++sample)
+        {
+            const auto hpCutoffHz = mSmoothedHpCutoff.getNextValue();
+            mHpFilterL.setCutoffFrequency (hpCutoffHz);
+            mHpFilterR.setCutoffFrequency (hpCutoffHz);
+            leftChannel[sample] = mHpFilterL.processSample (0, leftChannel[sample]);
+            rightChannel[sample] = mHpFilterR.processSample (0, rightChannel[sample]);
+        }
+
         if (hydraEngine.getVoiceAmplitude() == 0.0f)
         {
             filterL.reset();
             filterR.reset();
+            mHpFilterL.reset();
+            mHpFilterR.reset();
         }
     }
     else
@@ -340,8 +361,18 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
         hydraEngine.applyFilterOverload (leftChannel, nullptr, osNumSamples);
 
+        for (int sample = 0; sample < osNumSamples; ++sample)
+        {
+            const auto hpCutoffHz = mSmoothedHpCutoff.getNextValue();
+            mHpFilterL.setCutoffFrequency (hpCutoffHz);
+            leftChannel[sample] = mHpFilterL.processSample (0, leftChannel[sample]);
+        }
+
         if (hydraEngine.getVoiceAmplitude() == 0.0f)
+        {
             filterL.reset();
+            mHpFilterL.reset();
+        }
     }
 
     oversampler->processSamplesDown (inputBlock);
