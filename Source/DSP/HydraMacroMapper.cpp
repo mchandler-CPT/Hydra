@@ -14,14 +14,28 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth,
     static constexpr std::array<float, numPartials> alpha { 20.0f, 18.0f, 15.0f, 12.0f, 10.0f, 8.0f, 6.0f };
     static constexpr auto centerGain = 0.707f;
 
-    static constexpr std::array<std::array<float, numPartials>, 3> harmonicOrderings {{
-        {{ 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f }},
-        {{ 1.0f, 3.0f, 2.0f, 6.0f, 4.0f, 7.0f, 5.0f }},
-        {{ 1.0f, 3.0f, 5.0f, 7.0f, 2.0f, 4.0f, 6.0f }}
-    }};
+    static constexpr std::array<float, numPartials> linearMap { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
+    static constexpr std::array<float, numPartials> shuffleMap { 1.0f, 3.0f, 2.0f, 6.0f, 4.0f, 7.0f, 5.0f };
+    static constexpr std::array<float, numPartials> primeMap { 1.0f, 3.0f, 5.0f, 7.0f, 2.0f, 4.0f, 6.0f };
+    static constexpr std::array<float, numPartials> undertoneMap { 1.0f, 7.0f, 5.0f, 3.0f, 6.0f, 4.0f, 2.0f };
+    static constexpr std::array<float, numPartials> octaveMap { 1.0f, 2.0f, 4.0f, 6.0f, 3.0f, 5.0f, 7.0f };
+    static constexpr std::array<float, numPartials> bellMap { 1.0f, 5.0f, 7.0f, 6.0f, 3.0f, 2.0f, 4.0f };
 
-    const auto inversionIndex = juce::jlimit (0, 2, harmonicInversionIndex);
-    const auto& harmonicOrdering = harmonicOrderings[static_cast<size_t> (inversionIndex)];
+    const auto inversionChoice = juce::jlimit (0, numHarmonicInversionModes - 1, harmonicInversionIndex);
+    const std::array<float, numPartials>* activeHarmonicMap = &linearMap;
+
+    switch (inversionChoice)
+    {
+        case 0: activeHarmonicMap = &linearMap; break;
+        case 1: activeHarmonicMap = &shuffleMap; break;
+        case 2: activeHarmonicMap = &primeMap; break;
+        case 3: activeHarmonicMap = &undertoneMap; break;
+        case 4: activeHarmonicMap = &octaveMap; break;
+        case 5: activeHarmonicMap = &bellMap; break;
+        default: activeHarmonicMap = &linearMap; break;
+    }
+
+    const auto& harmonicOrdering = *activeHarmonicMap;
 
     static constexpr float harmonicRecipes[5][7] = {
         { 1.000f, 2.000f, 3.000f, 4.000f, 5.000f, 6.000f, 7.000f },

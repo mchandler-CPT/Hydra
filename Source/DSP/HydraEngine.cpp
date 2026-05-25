@@ -296,7 +296,14 @@ void HydraEngine::setScaleMorph (float newScaleMorph) noexcept
 
 int HydraEngine::harmonicInversionIndexFromParameter (float harmonicInversion) noexcept
 {
-    return juce::jlimit (0, 2, juce::roundToInt (harmonicInversion));
+    constexpr auto maxInversionIndex = HydraMacroMapper::numHarmonicInversionModes - 1;
+
+    if (harmonicInversion <= static_cast<float> (maxInversionIndex) + 0.5f)
+        return juce::jlimit (0, maxInversionIndex, juce::roundToInt (harmonicInversion));
+
+    return juce::jlimit (0,
+                         maxInversionIndex,
+                         juce::roundToInt (harmonicInversion * static_cast<float> (maxInversionIndex)));
 }
 
 void HydraEngine::setHarmonicTiltTarget (float harmonicTilt) noexcept
@@ -306,7 +313,8 @@ void HydraEngine::setHarmonicTiltTarget (float harmonicTilt) noexcept
 
 void HydraEngine::setHarmonicInversionIndexTarget (int harmonicInversionIndex) noexcept
 {
-    harmonicInversionSmoothed.setTargetValue (static_cast<float> (juce::jlimit (0, 2, harmonicInversionIndex)));
+    harmonicInversionSmoothed.setTargetValue (
+        static_cast<float> (juce::jlimit (0, HydraMacroMapper::numHarmonicInversionModes - 1, harmonicInversionIndex)));
 }
 
 float HydraEngine::computeHarmonicTiltGain (float harmonicMultiplier, float tilt) noexcept
