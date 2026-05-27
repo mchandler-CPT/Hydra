@@ -28,10 +28,23 @@ void ProceduralDarkLookAndFeel::drawRotarySlider (juce::Graphics& g,
     const auto bodyRadius = arcRadius - (arcThickness * 0.85f);
 
     const auto angle = rotaryStartAngle + (sliderPosProportional * (rotaryEndAngle - rotaryStartAngle));
+    const auto arcStroke = juce::PathStrokeType (arcThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
 
-    // Slightly oversized dark groove gives the control a recessed seat.
-    g.setColour (juce::Colour::fromString ("ff101010"));
+    // Recessed seat behind the knob body.
+    g.setColour (juce::Colour (dialTrackColour).darker (0.35f));
     g.fillEllipse (centre.x - grooveRadius, centre.y - grooveRadius, grooveRadius * 2.0f, grooveRadius * 2.0f);
+
+    juce::Path trackArc;
+    trackArc.addCentredArc (centre.x,
+                            centre.y,
+                            arcRadius,
+                            arcRadius,
+                            0.0f,
+                            rotaryStartAngle,
+                            rotaryEndAngle,
+                            true);
+    g.setColour (juce::Colour (dialTrackColour));
+    g.strokePath (trackArc, arcStroke);
 
     juce::Path progressArc;
     progressArc.addCentredArc (centre.x,
@@ -42,9 +55,8 @@ void ProceduralDarkLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                rotaryStartAngle,
                                angle,
                                true);
-    g.setColour (juce::Colour::fromString ("ffd4c5a1"));
-    g.strokePath (progressArc,
-                  juce::PathStrokeType (arcThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour (juce::Colour (dialFillColour));
+    g.strokePath (progressArc, arcStroke);
 
     juce::ColourGradient bodyGradient (juce::Colour::fromString ("ff323232"),
                                        centre.x,
@@ -72,6 +84,13 @@ void ProceduralDarkLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                  pointerLength,
                                  pointerThickness * 0.5f);
 
-    g.setColour (juce::Colour::fromString ("ffeaeaea"));
+    g.setColour (juce::Colour (dialPointerColour));
     g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (centre.x, centre.y));
+}
+
+juce::Label* ProceduralDarkLookAndFeel::createSliderTextBox (juce::Slider& slider)
+{
+    auto* label = juce::LookAndFeel_V4::createSliderTextBox (slider);
+    label->setFont (juce::Font (juce::FontOptions { 10.0f, juce::Font::plain }));
+    return label;
 }

@@ -89,6 +89,8 @@ target_sources(Hydra PRIVATE
     Source/PluginEditor.h
     Source/UI/ProceduralDarkLookAndFeel.h
     Source/UI/ProceduralDarkLookAndFeel.cpp
+    Source/UI/SnapToggleButton.h
+    Source/UI/SnapToggleButton.cpp
     Source/UI/XyExplorer.h
     Source/UI/XyExplorer.cpp
     

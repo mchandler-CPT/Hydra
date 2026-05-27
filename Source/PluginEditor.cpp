@@ -22,12 +22,19 @@ constexpr int kPanelHorizontalMargin = 10;
 constexpr int kPanelTopMargin = 8;
 constexpr int kPanelBottomMargin = 10;
 constexpr int kZoneGap = 8;
-constexpr int kZoneDividerInset = 14;
 constexpr int kHarmonicSubRowGap = 6;
+constexpr int kHarmonyKnobSize = 98;
+constexpr int kHarmonyKnobLabelGap = 6;
+constexpr int kHarmonyKnobValueGap = 4;
+constexpr int kHarmonyValueLabelHeight = 20;
+constexpr int kHarmonySnapButtonWidth = 54;
+constexpr int kHarmonySnapButtonHeight = 22;
+constexpr int kHarmonyRowHeight = kLabelBandHeight + kHarmonyKnobLabelGap + kHarmonyKnobSize + kHarmonyKnobValueGap
+                                  + kHarmonyValueLabelHeight + 6;
 constexpr int kHarmonicSubRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + 10;
-constexpr int kHarmonicSideStackHeight = (2 * kHarmonicSubRowHeight) + kHarmonicSubRowGap;
+constexpr int kHarmonicSideStackHeight = kHarmonyRowHeight + kHarmonicSubRowGap + kHarmonicSubRowHeight;
 constexpr int kXyPadSize = kHarmonicSideStackHeight;
-constexpr int kHarmonicZoneHeight = kPanelTopMargin + kHarmonicSideStackHeight + 24;
+constexpr int kHarmonicZoneHeight = kPanelTopMargin + kHarmonicSideStackHeight + 4;
 constexpr int kHarmonicZone1Top = kPanelTopMargin;
 constexpr int kModulationZoneTop = kHarmonicZone1Top + kHarmonicZoneHeight + kZoneGap;
 constexpr int kModulationZoneHeight = kKnobRowHeight;
@@ -43,13 +50,18 @@ constexpr int kEnvelopeRowHeight = kEnvelopeKnobLabelHeight + kEnvelopeKnobSize 
 constexpr int kVolumeEnvelopeRowHeight = kEnvelopeRowHeight - 8;
 constexpr int kFilterEnvelopeRowHeight = kEnvelopeRowHeight + 8;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
-constexpr int kHarmonySnapButtonWidth = 46;
-constexpr int kHarmonyDebugLabelHeight = 18;
 
 void styleKnobLabel (juce::Label& label)
 {
     label.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::bold }));
     label.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
+}
+
+void styleKnobValueReadout (juce::Slider& slider)
+{
+    slider.setColour (juce::Slider::textBoxTextColourId, juce::Colour (kMutedLabelColour));
+    slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
 }
 } // namespace
 
@@ -76,16 +88,13 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
 
     configureRotaryKnob (harmonySlider, harmonyLabel, "HARMONY", false);
 
-    harmonyQuantizeButton.setButtonText ("STEP");
-    harmonyQuantizeButton.setClickingTogglesState (true);
-    harmonyQuantizeButton.setColour (juce::ToggleButton::textColourId, juce::Colour (kMutedLabelColour));
-    harmonyQuantizeButton.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffc4a574));
-    harmonyQuantizeButton.setColour (juce::ToggleButton::tickDisabledColourId, juce::Colour (0xff6a6560));
+    harmonyQuantizeButton.setButtonText ("SNAP");
     addAndMakeVisible (harmonyQuantizeButton);
 
+    harmonyLabel.setJustificationType (juce::Justification::centred);
     harmonyDebugValueLabel.setJustificationType (juce::Justification::centred);
     harmonyDebugValueLabel.setInterceptsMouseClicks (false, false);
-    harmonyDebugValueLabel.setFont (juce::Font (juce::FontOptions { 10.0f, juce::Font::plain }));
+    harmonyDebugValueLabel.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::plain }));
     harmonyDebugValueLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
     addAndMakeVisible (harmonyDebugValueLabel);
 
@@ -243,9 +252,7 @@ void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
 
     if (showValueTextBox)
     {
-        slider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
-        slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-        slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+        styleKnobValueReadout (slider);
 
         if (valueSuffix.isNotEmpty())
             slider.setTextValueSuffix (valueSuffix);
@@ -293,9 +300,7 @@ void HydraAudioProcessorEditor::configureSteppedRotaryKnob (juce::Slider& slider
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setLookAndFeel (&customLookAndFeel);
     slider.setTextBoxStyle (juce::Slider::TextBoxBelow, true, kCutoffTextBoxWidth, kCutoffTextBoxHeight);
-    slider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
-    slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    styleKnobValueReadout (slider);
     addAndMakeVisible (slider);
 
     label.setText (labelText, juce::dontSendNotification);
@@ -326,33 +331,6 @@ void HydraAudioProcessorEditor::paint (juce::Graphics& g)
     g.fillAll (juce::Colour (0xff161412));
 
     const auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
-    const auto dividerX0 = kPanelHorizontalMargin + kZoneDividerInset;
-    const auto dividerX1 = getWidth() - kPanelHorizontalMargin - kZoneDividerInset;
-
-    const auto drawZoneDivider = [&] (int y)
-    {
-        g.setColour (juce::Colour (0xff2a2622));
-        g.drawHorizontalLine (y, static_cast<float> (dividerX0), static_cast<float> (dividerX1));
-    };
-
-    drawZoneDivider (kModulationZoneTop - (kZoneGap / 2));
-    drawZoneDivider (kEnvelopeZoneTop - (kZoneGap / 2));
-
-    g.setColour (juce::Colour (0xff6a6560).withAlpha (0.55f));
-    g.setFont (juce::Font (juce::FontOptions { 9.0f, juce::Font::bold }));
-    g.drawText ("HARMONIC ENGINE",
-                juce::Rectangle<int> (dividerX0, kHarmonicZone1Top, 160, 14),
-                juce::Justification::centredLeft,
-                true);
-    g.drawText ("GLOBAL MODULATION & FILTERS",
-                juce::Rectangle<int> (dividerX0, kModulationZoneTop - 2, 240, 14),
-                juce::Justification::centredLeft,
-                true);
-    g.drawText ("ENVELOPES",
-                juce::Rectangle<int> (dividerX0, kEnvelopeZoneTop - 2, 120, 14),
-                juce::Justification::centredLeft,
-                true);
-
     g.setColour (juce::Colour (0xff6a6560));
     g.setFont (juce::Font (juce::FontOptions { 10.0f }));
     g.drawText ("THE HYDRA — HARMONIC SCAFFOLD SYNTH",
@@ -368,7 +346,7 @@ void HydraAudioProcessorEditor::resized()
     auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
 
     const auto harmonicZone = controlPanel.withY (kHarmonicZone1Top).withHeight (kHarmonicZoneHeight);
-    const auto harmonicStackTop = harmonicZone.getY() + 14;
+    const auto harmonicStackTop = harmonicZone.getY();
     const auto xyPadX = (getWidth() - kXyPadSize) / 2;
     const auto sideGap = 10;
 
@@ -414,16 +392,23 @@ void HydraAudioProcessorEditor::resized()
     };
 
     {
-        auto harmonyRow = leftHarmonicCluster.removeFromTop (kHarmonicSubRowHeight);
+        auto harmonyRow = leftHarmonicCluster.removeFromTop (kHarmonyRowHeight);
         leftHarmonicCluster.removeFromTop (kHarmonicSubRowGap);
         auto bottomRow = leftHarmonicCluster;
 
-        auto labelRow = harmonyRow.removeFromTop (kLabelBandHeight);
-        harmonyQuantizeButton.setBounds (labelRow.removeFromRight (kHarmonySnapButtonWidth).reduced (2, 4));
-        harmonyLabel.setBounds (labelRow);
-        harmonyRow.removeFromBottom (kHarmonyDebugLabelHeight + 4);
-        harmonyDebugValueLabel.setBounds (harmonyRow.removeFromBottom (kHarmonyDebugLabelHeight));
-        harmonySlider.setBounds (harmonyRow.withSizeKeepingCentre (kColumnWidth, kEnvelopeKnobSize));
+        harmonyQuantizeButton.setBounds (harmonyRow.getRight() - kHarmonySnapButtonWidth,
+                                         harmonyRow.getY() + ((kLabelBandHeight - kHarmonySnapButtonHeight) / 2),
+                                         kHarmonySnapButtonWidth,
+                                         kHarmonySnapButtonHeight);
+
+        auto harmonyStack = harmonyRow.withSizeKeepingCentre (kHarmonyKnobSize, harmonyRow.getHeight());
+
+        harmonyLabel.setBounds (harmonyStack.removeFromTop (kLabelBandHeight));
+        harmonyStack.removeFromTop (kHarmonyKnobLabelGap);
+        harmonySlider.setBounds (harmonyStack.removeFromTop (kHarmonyKnobSize)
+                                           .withSizeKeepingCentre (kHarmonyKnobSize, kHarmonyKnobSize));
+        harmonyStack.removeFromTop (kHarmonyKnobValueGap);
+        harmonyDebugValueLabel.setBounds (harmonyStack.removeFromTop (kHarmonyValueLabelHeight));
 
         const auto bottomColumnWidth = bottomRow.getWidth() / 2;
         auto inversionColumn = bottomRow.removeFromLeft (bottomColumnWidth);
@@ -456,7 +441,7 @@ void HydraAudioProcessorEditor::resized()
 
     bringHarmonicControlsToFront();
 
-    const auto modulationRow = controlPanel.withY (kModulationZoneTop + 12).withHeight (kModulationZoneHeight);
+    const auto modulationRow = controlPanel.withY (kModulationZoneTop).withHeight (kModulationZoneHeight);
     const auto modulationInnerWidth = getWidth() - (2 * kPanelHorizontalMargin);
     const auto modulationColumnWidth = modulationInnerWidth / 6;
 
@@ -477,7 +462,7 @@ void HydraAudioProcessorEditor::resized()
     placeModulationColumn (4, egrAmountSlider, egrAmountLabel, kRotaryBodyHeight);
     placeModulationColumn (5, envWarpSlider, envWarpLabel, kRotaryBodyHeight);
 
-    const auto envelopeAreaTop = kEnvelopeZoneTop + 8;
+    const auto envelopeAreaTop = kEnvelopeZoneTop;
     const auto envelopeAreaBottom = kControlPanelHeight - (kPanelBottomMargin + kEnvelopeFooterPadding);
     auto envelopeArea = juce::Rectangle<int>::leftTopRightBottom (kPanelHorizontalMargin,
                                                                   envelopeAreaTop,

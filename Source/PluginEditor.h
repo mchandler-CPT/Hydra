@@ -2,6 +2,7 @@
 
 #include "ProceduralDarkLookAndFeel.h"
 #include "PluginProcessor.h"
+#include "UI/SnapToggleButton.h"
 #include "UI/XyExplorer.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -46,7 +47,7 @@ private:
     juce::GroupComponent filterEnvelopeGroup;
 
     juce::Slider harmonySlider;
-    juce::ToggleButton harmonyQuantizeButton;
+    SnapToggleButton harmonyQuantizeButton;
     juce::Slider filterCutoffSlider;
     juce::Slider filterResSlider;
     juce::Slider gainSlider;
