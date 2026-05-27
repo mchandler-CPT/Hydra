@@ -10,7 +10,7 @@ constexpr int kEditorWidth = 750;
 constexpr int kKeyboardStripHeight = 90;
 constexpr int kColumnWidth = 118;
 constexpr int kLabelBandHeight = 24;
-constexpr int kCutoffTextBoxWidth = 70;
+constexpr int kCutoffTextBoxWidth = 88;
 constexpr int kCutoffTextBoxHeight = 18;
 constexpr int kControlColumnBottomInset = 22;
 constexpr int kRotaryBodyHeight = 72;
@@ -23,12 +23,9 @@ constexpr int kZoneGap = 8;
 constexpr int kHarmonicSubRowGap = 6;
 constexpr int kHarmonyKnobSize = 98;
 constexpr int kHarmonyKnobLabelGap = 6;
-constexpr int kHarmonyKnobValueGap = 4;
-constexpr int kHarmonyValueLabelHeight = 20;
 constexpr int kHarmonySnapButtonWidth = 54;
 constexpr int kHarmonySnapButtonHeight = 22;
-constexpr int kHarmonyRowHeight = kLabelBandHeight + kHarmonyKnobLabelGap + kHarmonyKnobSize + kHarmonyKnobValueGap
-                                  + kHarmonyValueLabelHeight + 6;
+constexpr int kHarmonyRowHeight = kLabelBandHeight + kHarmonyKnobLabelGap + kHarmonyKnobSize + kCutoffTextBoxHeight + 6;
 constexpr int kInversionModeLabelHeight = 14;
 constexpr int kInversionSequenceLabelHeight = 14;
 constexpr int kInversionReadoutHeight = kInversionModeLabelHeight + kInversionSequenceLabelHeight;
@@ -49,7 +46,7 @@ constexpr int kEnvelopeInnerPadding = 10;
 constexpr int kEnvelopeTabButtonHeight = 24;
 constexpr int kEnvelopeTabButtonGap = 8;
 constexpr int kEnvelopeTabRowHeight = kEnvelopeTabButtonHeight + kEnvelopeTabButtonGap;
-constexpr int kEnvelopeAdsrRowHeight = kLabelBandHeight + kEnvelopeKnobSize + 6;
+constexpr int kEnvelopeAdsrRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + 6;
 constexpr int kEnvelopeSectionHeight = kEnvelopeTabRowHeight + kEnvelopeAdsrRowHeight + 4;
 constexpr int kControlPanelHeight = kHarmonicZoneHeight + kZoneGap + kModulationZoneHeight + kZoneGap
                                   + kEnvelopeSectionHeight + kFooterStripHeight;
@@ -67,6 +64,88 @@ void styleKnobValueReadout (juce::Slider& slider)
     slider.setColour (juce::Slider::textBoxTextColourId, juce::Colour (kMutedLabelColour));
     slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+}
+
+juce::String formatTimeReadout (double seconds)
+{
+    if (seconds < 1.0)
+        return juce::String (seconds * 1000.0, 3) + " ms";
+
+    return juce::String (seconds, 3) + " s";
+}
+
+double parseTimeReadout (const juce::String& text)
+{
+    auto trimmed = text.trim();
+
+    if (trimmed.endsWithIgnoreCase ("ms"))
+        return trimmed.dropLastCharacters (2).trim().getDoubleValue() / 1000.0;
+
+    if (trimmed.endsWithIgnoreCase ("s"))
+        return trimmed.dropLastCharacters (1).trim().getDoubleValue();
+
+    return trimmed.getDoubleValue();
+}
+
+void applyKnobReadout (juce::Slider& slider,
+                       HydraAudioProcessorEditor::KnobReadoutKind kind,
+                       const juce::String& valueSuffix = {})
+{
+    slider.setTextBoxStyle (juce::Slider::TextBoxBelow, true, kCutoffTextBoxWidth, kCutoffTextBoxHeight);
+    styleKnobValueReadout (slider);
+    slider.setTextValueSuffix ({});
+    slider.textFromValueFunction = nullptr;
+    slider.valueFromTextFunction = nullptr;
+
+    switch (kind)
+    {
+        case HydraAudioProcessorEditor::KnobReadoutKind::unitless2dp:
+            slider.setNumDecimalPlacesToDisplay (2);
+            slider.textFromValueFunction = [] (double value) { return juce::String (value, 2); };
+            slider.valueFromTextFunction = [] (const juce::String& text) { return text.getDoubleValue(); };
+            break;
+
+        case HydraAudioProcessorEditor::KnobReadoutKind::unitless3dp:
+            slider.setNumDecimalPlacesToDisplay (3);
+            slider.textFromValueFunction = [] (double value) { return juce::String (value, 3); };
+            slider.valueFromTextFunction = [] (const juce::String& text) { return text.getDoubleValue(); };
+            break;
+
+        case HydraAudioProcessorEditor::KnobReadoutKind::percent:
+            slider.setNumDecimalPlacesToDisplay (0);
+            slider.textFromValueFunction = [] (double value) { return juce::String (juce::roundToInt (value * 100.0)) + "%"; };
+            slider.valueFromTextFunction = [] (const juce::String& text)
+            {
+                return text.retainCharacters ("0123456789.-").getDoubleValue() / 100.0;
+            };
+            break;
+
+        case HydraAudioProcessorEditor::KnobReadoutKind::bipolar:
+            slider.setNumDecimalPlacesToDisplay (3);
+            slider.textFromValueFunction = [] (double value)
+            {
+                const auto sign = value > 0.0 ? "+" : "";
+                return sign + juce::String (value, 3);
+            };
+            slider.valueFromTextFunction = [] (const juce::String& text) { return text.getDoubleValue(); };
+            break;
+
+        case HydraAudioProcessorEditor::KnobReadoutKind::hertz:
+            slider.setNumDecimalPlacesToDisplay (6);
+            slider.textFromValueFunction = [] (double value) { return juce::String (value, 6); };
+            slider.valueFromTextFunction = [] (const juce::String& text) { return text.getDoubleValue(); };
+            break;
+
+        case HydraAudioProcessorEditor::KnobReadoutKind::timeSeconds:
+            slider.textFromValueFunction = [] (double value) { return formatTimeReadout (value); };
+            slider.valueFromTextFunction = [] (const juce::String& text) { return parseTimeReadout (text); };
+            break;
+    }
+
+    if (valueSuffix.isNotEmpty())
+        slider.setTextValueSuffix (valueSuffix);
+
+    slider.updateText();
 }
 
 void styleInversionReadoutLabel (juce::Label& label, bool isSequenceLine)
@@ -114,41 +193,35 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     volumeEnvButton.onClick = [this] { selectVolumeEnvelopeTab(); };
     filterEnvButton.onClick = [this] { selectFilterEnvelopeTab(); };
 
-    configureRotaryKnob (harmonySlider, harmonyLabel, "HARMONY", false);
+    configureRotaryKnob (harmonySlider, harmonyLabel, "HARMONY", KnobReadoutKind::unitless3dp);
 
     harmonyQuantizeButton.setButtonText ("SNAP");
     addAndMakeVisible (harmonyQuantizeButton);
 
     harmonyLabel.setJustificationType (juce::Justification::centred);
-    harmonyDebugValueLabel.setJustificationType (juce::Justification::centred);
-    harmonyDebugValueLabel.setInterceptsMouseClicks (false, false);
-    harmonyDebugValueLabel.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::plain }));
-    harmonyDebugValueLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
-    addAndMakeVisible (harmonyDebugValueLabel);
 
-    configureRotaryKnob (filterCutoffSlider, filterCutoffLabel, "FILTER CUTOFF", true, " Hz");
-    configureRotaryKnob (filterResSlider, filterResLabel, "RESONANCE", true);
-    configureRotaryKnob (gainSlider, gainLabel, "MASTER GAIN", false);
-    configureRotaryKnob (glideSlider, glideLabel, "GLIDE", false);
+    configureRotaryKnob (filterCutoffSlider, filterCutoffLabel, "FILTER CUTOFF", KnobReadoutKind::hertz, " Hz");
+    configureRotaryKnob (filterResSlider, filterResLabel, "RESONANCE", KnobReadoutKind::unitless2dp);
+    configureRotaryKnob (gainSlider, gainLabel, "MASTER GAIN", KnobReadoutKind::unitless3dp);
+    configureRotaryKnob (glideSlider, glideLabel, "GLIDE", KnobReadoutKind::timeSeconds);
     configureSteppedRotaryKnob (harmonicInversionSlider, harmonicInversionLabel, "INVERSION");
     harmonicInversionSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     styleInversionReadoutLabel (harmonicInversionModeLabel, false);
     styleInversionReadoutLabel (harmonicInversionSequenceLabel, true);
     addAndMakeVisible (harmonicInversionModeLabel);
     addAndMakeVisible (harmonicInversionSequenceLabel);
-    configureRotaryKnob (harmonicTiltSlider, harmonicTiltLabel, "HARMONIC TILT", true);
+    configureRotaryKnob (harmonicTiltSlider, harmonicTiltLabel, "HARMONIC TILT", KnobReadoutKind::bipolar);
     harmonicTiltSlider.setDoubleClickReturnValue (true, 0.0);
-    configureRotaryKnob (kbTrackSlider, kbTrackLabel, "KB TRACK", false);
-    configureRotaryKnob (hpCutoffSlider, hpCutoffLabel, "HP CUTOFF", true, " Hz");
-    configureRotaryKnob (overloadSlider, overloadLabel, "OVERLOAD", false);
+    configureRotaryKnob (kbTrackSlider, kbTrackLabel, "KB TRACK", KnobReadoutKind::unitless3dp);
+    configureRotaryKnob (hpCutoffSlider, hpCutoffLabel, "HP CUTOFF", KnobReadoutKind::hertz, " Hz");
+    configureRotaryKnob (overloadSlider, overloadLabel, "OVERLOAD", KnobReadoutKind::unitless3dp);
 
-    configureAdsrKnob (envWarpSlider, envWarpLabel, "ENV WARP");
-    configureAdsrKnob (egrAmountSlider, egrAmountLabel, "EGR AMOUNT");
-    configureAdsrKnob (attackSlider, attackLabel, "ATTACK");
-    configureAdsrKnob (decaySlider, decayLabel, "DECAY");
-    configureAdsrKnob (sustainSlider, sustainLabel, "SUSTAIN");
-    configureAdsrKnob (releaseSlider, releaseLabel, "RELEASE");
-
+    configureAdsrKnob (envWarpSlider, envWarpLabel, "ENV WARP", KnobReadoutKind::bipolar);
+    configureAdsrKnob (egrAmountSlider, egrAmountLabel, "EGR AMOUNT", KnobReadoutKind::bipolar);
+    configureAdsrKnob (attackSlider, attackLabel, "ATTACK", KnobReadoutKind::timeSeconds);
+    configureAdsrKnob (decaySlider, decayLabel, "DECAY", KnobReadoutKind::timeSeconds);
+    configureAdsrKnob (sustainSlider, sustainLabel, "SUSTAIN", KnobReadoutKind::unitless3dp);
+    configureAdsrKnob (releaseSlider, releaseLabel, "RELEASE", KnobReadoutKind::timeSeconds);
     auto& apvts = audioProcessor.getApvts();
 
     if (auto* depthParam = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter ("depth")))
@@ -161,8 +234,6 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
 
     harmonySlider.onValueChange = [this]
     {
-        updateHarmonyDebugLabel();
-
         if (isUpdatingHarmonySnap || ! harmonyQuantizeButton.getToggleState())
             return;
 
@@ -173,12 +244,7 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     {
         if (harmonyQuantizeButton.getToggleState())
             snapHarmonyParameterToNearestStep();
-
-        updateHarmonyDebugLabel();
     };
-
-    updateHarmonyDebugLabel();
-    startTimerHz (30);
 
     if (harmonyQuantizeButton.getToggleState())
         snapHarmonyParameterToNearestStep();
@@ -203,11 +269,12 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     kbTrackAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "kbTrack", kbTrackSlider);
     hpCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "hpCutoff", hpCutoffSlider);
     overloadAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterOverload", overloadSlider);
+
+    refreshKnobReadouts();
 }
 
 HydraAudioProcessorEditor::~HydraAudioProcessorEditor()
 {
-    stopTimer();
     harmonySlider.setLookAndFeel (nullptr);
     filterCutoffSlider.setLookAndFeel (nullptr);
     filterResSlider.setLookAndFeel (nullptr);
@@ -224,24 +291,6 @@ HydraAudioProcessorEditor::~HydraAudioProcessorEditor()
     kbTrackSlider.setLookAndFeel (nullptr);
     hpCutoffSlider.setLookAndFeel (nullptr);
     overloadSlider.setLookAndFeel (nullptr);
-}
-
-void HydraAudioProcessorEditor::timerCallback()
-{
-    updateHarmonyDebugLabel();
-}
-
-void HydraAudioProcessorEditor::updateHarmonyDebugLabel()
-{
-    auto* harmonyParam = audioProcessor.getApvts().getParameter ("harmony");
-
-    if (harmonyParam == nullptr)
-        return;
-
-    const auto& range = harmonyParam->getNormalisableRange();
-    const auto harmonyValue = range.convertFrom0to1 (harmonyParam->getValue());
-    harmonyDebugValueLabel.setText (juce::String::formatted ("%.3f", harmonyValue),
-                                    juce::dontSendNotification);
 }
 
 void HydraAudioProcessorEditor::updateHarmonicInversionDisplayLabels()
@@ -282,6 +331,7 @@ void HydraAudioProcessorEditor::updateEnvelopeTabBindings()
         decayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "decay", decaySlider);
         sustainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "sustain", sustainSlider);
         releaseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "release", releaseSlider);
+        refreshKnobReadouts();
         return;
     }
 
@@ -289,32 +339,38 @@ void HydraAudioProcessorEditor::updateEnvelopeTabBindings()
     decayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterDecay", decaySlider);
     sustainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterSustain", sustainSlider);
     releaseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterRelease", releaseSlider);
+
+    refreshKnobReadouts();
+}
+
+void HydraAudioProcessorEditor::refreshKnobReadouts()
+{
+    applyKnobReadout (harmonySlider, KnobReadoutKind::unitless3dp);
+    applyKnobReadout (filterCutoffSlider, KnobReadoutKind::hertz, " Hz");
+    applyKnobReadout (filterResSlider, KnobReadoutKind::unitless2dp);
+    applyKnobReadout (gainSlider, KnobReadoutKind::unitless3dp);
+    applyKnobReadout (glideSlider, KnobReadoutKind::timeSeconds);
+    applyKnobReadout (harmonicTiltSlider, KnobReadoutKind::bipolar);
+    applyKnobReadout (kbTrackSlider, KnobReadoutKind::unitless3dp);
+    applyKnobReadout (hpCutoffSlider, KnobReadoutKind::hertz, " Hz");
+    applyKnobReadout (overloadSlider, KnobReadoutKind::unitless3dp);
+    applyKnobReadout (envWarpSlider, KnobReadoutKind::bipolar);
+    applyKnobReadout (egrAmountSlider, KnobReadoutKind::bipolar);
+    applyKnobReadout (attackSlider, KnobReadoutKind::timeSeconds);
+    applyKnobReadout (decaySlider, KnobReadoutKind::timeSeconds);
+    applyKnobReadout (sustainSlider, KnobReadoutKind::unitless3dp);
+    applyKnobReadout (releaseSlider, KnobReadoutKind::timeSeconds);
 }
 
 void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
                                                      juce::Label& label,
                                                      const juce::String& labelText,
-                                                     const bool showValueTextBox,
+                                                     const KnobReadoutKind readoutKind,
                                                      const juce::String& valueSuffix)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setLookAndFeel (&customLookAndFeel);
-    slider.setTextBoxStyle (juce::Slider::TextBoxBelow,
-                            showValueTextBox,
-                            kCutoffTextBoxWidth,
-                            kCutoffTextBoxHeight);
-
-    if (showValueTextBox)
-    {
-        styleKnobValueReadout (slider);
-
-        if (valueSuffix.isNotEmpty())
-            slider.setTextValueSuffix (valueSuffix);
-    }
-    else
-    {
-        slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
-    }
+    applyKnobReadout (slider, readoutKind, valueSuffix);
 
     addAndMakeVisible (slider);
 
@@ -343,8 +399,6 @@ void HydraAudioProcessorEditor::snapHarmonyParameterToNearestStep()
         harmonyParam->setValueNotifyingHost (normalizedValue);
 
     isUpdatingHarmonySnap = false;
-
-    updateHarmonyDebugLabel();
 }
 
 void HydraAudioProcessorEditor::configureSteppedRotaryKnob (juce::Slider& slider,
@@ -366,11 +420,12 @@ void HydraAudioProcessorEditor::configureSteppedRotaryKnob (juce::Slider& slider
 
 void HydraAudioProcessorEditor::configureAdsrKnob (juce::Slider& slider,
                                                     juce::Label& label,
-                                                    const juce::String& labelText)
+                                                    const juce::String& labelText,
+                                                    const HydraAudioProcessorEditor::KnobReadoutKind readoutKind)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setLookAndFeel (&customLookAndFeel);
-    slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+    applyKnobReadout (slider, readoutKind);
     addAndMakeVisible (slider);
 
     label.setText (labelText, juce::dontSendNotification);
@@ -448,7 +503,6 @@ void HydraAudioProcessorEditor::resized()
         harmonySlider.toFront (false);
         harmonyLabel.toFront (false);
         harmonyQuantizeButton.toFront (false);
-        harmonyDebugValueLabel.toFront (false);
         harmonicInversionSlider.toFront (false);
         harmonicInversionLabel.toFront (false);
         harmonicInversionModeLabel.toFront (false);
@@ -491,10 +545,8 @@ void HydraAudioProcessorEditor::resized()
 
         harmonyLabel.setBounds (harmonyStack.removeFromTop (kLabelBandHeight));
         harmonyStack.removeFromTop (kHarmonyKnobLabelGap);
-        harmonySlider.setBounds (harmonyStack.removeFromTop (kHarmonyKnobSize)
-                                           .withSizeKeepingCentre (kHarmonyKnobSize, kHarmonyKnobSize));
-        harmonyStack.removeFromTop (kHarmonyKnobValueGap);
-        harmonyDebugValueLabel.setBounds (harmonyStack.removeFromTop (kHarmonyValueLabelHeight));
+        harmonySlider.setBounds (harmonyStack.removeFromTop (kHarmonyKnobSize + kCutoffTextBoxHeight)
+                                           .withSizeKeepingCentre (kHarmonyKnobSize, kHarmonyKnobSize + kCutoffTextBoxHeight));
 
         const auto bottomColumnWidth = bottomRow.getWidth() / 2;
         auto inversionColumn = bottomRow.removeFromLeft (bottomColumnWidth);
@@ -520,14 +572,14 @@ void HydraAudioProcessorEditor::resized()
         auto gainStack = gainRow.withSizeKeepingCentre (kHarmonyKnobSize, gainRow.getHeight());
         gainLabel.setBounds (gainStack.removeFromTop (kLabelBandHeight));
         gainStack.removeFromTop (kHarmonyKnobLabelGap);
-        gainSlider.setBounds (gainStack.removeFromTop (kHarmonyKnobSize)
-                                         .withSizeKeepingCentre (kHarmonyKnobSize, kHarmonyKnobSize));
+        gainSlider.setBounds (gainStack.removeFromTop (kHarmonyKnobSize + kCutoffTextBoxHeight)
+                                       .withSizeKeepingCentre (kHarmonyKnobSize, kHarmonyKnobSize + kCutoffTextBoxHeight));
 
         const auto bottomColumnWidth = bottomRow.getWidth() / 2;
         auto glideColumn = bottomRow.removeFromLeft (bottomColumnWidth);
         auto overloadColumn = bottomRow;
-        placeKnobColumn (glideColumn, glideSlider, glideLabel, kRotaryBodyHeight, true);
-        placeKnobColumn (overloadColumn, overloadSlider, overloadLabel, kRotaryBodyHeight, true);
+        placeKnobColumn (glideColumn, glideSlider, glideLabel, kRotarySliderWithReadoutHeight, true);
+        placeKnobColumn (overloadColumn, overloadSlider, overloadLabel, kRotarySliderWithReadoutHeight, true);
     }
 
     bringHarmonicControlsToFront();
@@ -551,10 +603,10 @@ void HydraAudioProcessorEditor::resized()
 
     placeModulationColumn (0, filterCutoffSlider, filterCutoffLabel, kRotarySliderWithReadoutHeight);
     placeModulationColumn (1, filterResSlider, filterResLabel, kRotarySliderWithReadoutHeight);
-    placeModulationColumn (2, kbTrackSlider, kbTrackLabel, kRotaryBodyHeight);
+    placeModulationColumn (2, kbTrackSlider, kbTrackLabel, kRotarySliderWithReadoutHeight);
     placeModulationColumn (3, hpCutoffSlider, hpCutoffLabel, kRotarySliderWithReadoutHeight);
-    placeModulationColumn (4, egrAmountSlider, egrAmountLabel, kRotaryBodyHeight);
-    placeModulationColumn (5, envWarpSlider, envWarpLabel, kRotaryBodyHeight);
+    placeModulationColumn (4, egrAmountSlider, egrAmountLabel, kRotarySliderWithReadoutHeight);
+    placeModulationColumn (5, envWarpSlider, envWarpLabel, kRotarySliderWithReadoutHeight);
 
     const auto adsrClusterWidth = modulationColumnWidth * 4;
 
@@ -583,8 +635,7 @@ void HydraAudioProcessorEditor::resized()
         auto column = row.removeFromLeft (columnWidth);
         label.setBounds (column.removeFromTop (kLabelBandHeight));
         column.removeFromBottom (6);
-        auto knobArea = column.removeFromTop (juce::jmin (kEnvelopeKnobSize, column.getHeight()));
-        slider.setBounds (knobArea.withSizeKeepingCentre (kEnvelopeKnobSize, kEnvelopeKnobSize));
+        slider.setBounds (column.removeFromTop (juce::jmin (kRotarySliderWithReadoutHeight, column.getHeight())));
     };
 
     placeEnvelopeDial (adsrRow, modulationColumnWidth, attackSlider, attackLabel);

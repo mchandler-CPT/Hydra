@@ -11,8 +11,7 @@
 
 #include <memory>
 
-class HydraAudioProcessorEditor : public juce::AudioProcessorEditor,
-                                  private juce::Timer
+class HydraAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 public:
     explicit HydraAudioProcessorEditor (HydraAudioProcessor&);
@@ -21,14 +20,27 @@ public:
     void paint (juce::Graphics& g) override;
     void resized() override;
 
+    enum class KnobReadoutKind
+    {
+        unitless2dp,
+        unitless3dp,
+        percent,
+        bipolar,
+        hertz,
+        timeSeconds
+    };
+
 private:
     void configureRotaryKnob (juce::Slider& slider,
                               juce::Label& label,
                               const juce::String& labelText,
-                              bool showValueTextBox,
+                              KnobReadoutKind readoutKind,
                               const juce::String& valueSuffix = {});
 
-    void configureAdsrKnob (juce::Slider& slider, juce::Label& label, const juce::String& labelText);
+    void configureAdsrKnob (juce::Slider& slider,
+                            juce::Label& label,
+                            const juce::String& labelText,
+                            KnobReadoutKind readoutKind);
 
     void configureSteppedRotaryKnob (juce::Slider& slider,
                                      juce::Label& label,
@@ -38,10 +50,9 @@ private:
     void selectVolumeEnvelopeTab();
     void selectFilterEnvelopeTab();
 
-    void timerCallback() override;
-    void updateHarmonyDebugLabel();
     void updateHarmonicInversionDisplayLabels();
     void snapHarmonyParameterToNearestStep();
+    void refreshKnobReadouts();
 
     HydraAudioProcessor& audioProcessor;
     ProceduralDarkLookAndFeel customLookAndFeel;
@@ -58,7 +69,6 @@ private:
     juce::Slider gainSlider;
 
     juce::Label harmonyLabel;
-    juce::Label harmonyDebugValueLabel;
     juce::Label filterCutoffLabel;
     juce::Label filterResLabel;
     juce::Label gainLabel;
