@@ -31,7 +31,12 @@ constexpr int kHarmonySnapButtonWidth = 54;
 constexpr int kHarmonySnapButtonHeight = 22;
 constexpr int kHarmonyRowHeight = kLabelBandHeight + kHarmonyKnobLabelGap + kHarmonyKnobSize + kHarmonyKnobValueGap
                                   + kHarmonyValueLabelHeight + 6;
-constexpr int kHarmonicSubRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + 10;
+constexpr int kInversionModeLabelHeight = 14;
+constexpr int kInversionSequenceLabelHeight = 14;
+constexpr int kInversionReadoutHeight = kInversionModeLabelHeight + kInversionSequenceLabelHeight;
+constexpr int kHarmonicSubRowReadoutHeight = kInversionReadoutHeight > kCutoffTextBoxHeight ? kInversionReadoutHeight
+                                                                                          : kCutoffTextBoxHeight;
+constexpr int kHarmonicSubRowHeight = kLabelBandHeight + kRotaryBodyHeight + kHarmonicSubRowReadoutHeight + 10;
 constexpr int kHarmonicSideStackHeight = kHarmonyRowHeight + kHarmonicSubRowGap + kHarmonicSubRowHeight;
 constexpr int kXyPadSize = kHarmonicSideStackHeight;
 constexpr int kHarmonicZoneHeight = kPanelTopMargin + kHarmonicSideStackHeight + 4;
@@ -63,6 +68,29 @@ void styleKnobValueReadout (juce::Slider& slider)
     slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
 }
+
+void styleInversionReadoutLabel (juce::Label& label, bool isSequenceLine)
+{
+    label.setJustificationType (juce::Justification::centred);
+    label.setInterceptsMouseClicks (false, false);
+    label.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
+    label.setFont (juce::Font (juce::FontOptions { isSequenceLine ? 10.0f : 11.0f, juce::Font::plain }));
+}
+
+struct InversionDisplayText
+{
+    const char* mode;
+    const char* sequence;
+};
+
+constexpr std::array<InversionDisplayText, 6> kInversionDisplayTexts {{
+    { "LINEAR", "(1-7)" },
+    { "SHUFFLE", "(1,3,2,6,4,7,5)" },
+    { "ODD/PRIME", "(1,3,5,7,2,4,6)" },
+    { "UNDERTONE", "(1,7,5,3,6,4,2)" },
+    { "OCTAVE", "(1,2,4,6,3,5,7)" },
+    { "BELL", "(1,5,7,6,3,2,4)" },
+}};
 } // namespace
 
 HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& processor)
@@ -103,6 +131,11 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     configureRotaryKnob (gainSlider, gainLabel, "MASTER GAIN", false);
     configureRotaryKnob (glideSlider, glideLabel, "GLIDE", false);
     configureSteppedRotaryKnob (harmonicInversionSlider, harmonicInversionLabel, "INVERSION");
+    harmonicInversionSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+    styleInversionReadoutLabel (harmonicInversionModeLabel, false);
+    styleInversionReadoutLabel (harmonicInversionSequenceLabel, true);
+    addAndMakeVisible (harmonicInversionModeLabel);
+    addAndMakeVisible (harmonicInversionSequenceLabel);
     configureRotaryKnob (harmonicTiltSlider, harmonicTiltLabel, "HARMONIC TILT", true);
     harmonicTiltSlider.setDoubleClickReturnValue (true, 0.0);
     configureRotaryKnob (kbTrackSlider, kbTrackLabel, "KB TRACK", false);
@@ -169,24 +202,12 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     filterReleaseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterRelease", filterReleaseSlider);
     glideAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "glideTime", glideSlider);
     harmonicInversionSlider.setRange (0.0, 5.0, 1.0);
-
-    harmonicInversionSlider.textFromValueFunction = [] (double value)
-    {
-        static constexpr std::array<const char*, 6> kInversionLabels {
-            "LINEAR",
-            "SHUFFLE",
-            "ODD/PRIME",
-            "UNDERTONE",
-            "OCTAVE",
-            "BELL"
-        };
-
-        const auto index = juce::jlimit (0, 5, juce::roundToInt (value));
-        return juce::String { kInversionLabels[static_cast<size_t> (index)] };
-    };
+    harmonicInversionSlider.onValueChange = [this] { updateHarmonicInversionDisplayLabels(); };
 
     harmonicInversionAttachment =
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "harmonicInversion", harmonicInversionSlider);
+
+    updateHarmonicInversionDisplayLabels();
     harmonicTiltAttachment =
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "harmonicTilt", harmonicTiltSlider);
     kbTrackAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "kbTrack", kbTrackSlider);
@@ -235,6 +256,15 @@ void HydraAudioProcessorEditor::updateHarmonyDebugLabel()
     const auto harmonyValue = range.convertFrom0to1 (harmonyParam->getValue());
     harmonyDebugValueLabel.setText (juce::String::formatted ("%.3f", harmonyValue),
                                     juce::dontSendNotification);
+}
+
+void HydraAudioProcessorEditor::updateHarmonicInversionDisplayLabels()
+{
+    const auto index = juce::jlimit (0, 5, juce::roundToInt (harmonicInversionSlider.getValue()));
+    const auto& text = kInversionDisplayTexts[static_cast<size_t> (index)];
+
+    harmonicInversionModeLabel.setText (text.mode, juce::dontSendNotification);
+    harmonicInversionSequenceLabel.setText (text.sequence, juce::dontSendNotification);
 }
 
 void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
@@ -381,6 +411,8 @@ void HydraAudioProcessorEditor::resized()
         harmonyDebugValueLabel.toFront (false);
         harmonicInversionSlider.toFront (false);
         harmonicInversionLabel.toFront (false);
+        harmonicInversionModeLabel.toFront (false);
+        harmonicInversionSequenceLabel.toFront (false);
         harmonicTiltSlider.toFront (false);
         harmonicTiltLabel.toFront (false);
         glideSlider.toFront (false);
@@ -413,15 +445,16 @@ void HydraAudioProcessorEditor::resized()
         const auto bottomColumnWidth = bottomRow.getWidth() / 2;
         auto inversionColumn = bottomRow.removeFromLeft (bottomColumnWidth);
         auto tiltColumn = bottomRow;
-        placeKnobColumn (inversionColumn,
-                         harmonicInversionSlider,
-                         harmonicInversionLabel,
-                         kRotarySliderWithReadoutHeight,
-                         true);
+        harmonicInversionLabel.setBounds (inversionColumn.removeFromTop (kLabelBandHeight));
+        inversionColumn.removeFromBottom (6);
+        auto inversionReadoutColumn = inversionColumn.removeFromBottom (kInversionReadoutHeight);
+        harmonicInversionSlider.setBounds (inversionColumn.removeFromTop (juce::jmin (kRotaryBodyHeight, inversionColumn.getHeight())));
+        harmonicInversionModeLabel.setBounds (inversionReadoutColumn.removeFromTop (kInversionModeLabelHeight));
+        harmonicInversionSequenceLabel.setBounds (inversionReadoutColumn);
         placeKnobColumn (tiltColumn,
                          harmonicTiltSlider,
                          harmonicTiltLabel,
-                         kRotarySliderWithReadoutHeight,
+                         kRotaryBodyHeight + kCutoffTextBoxHeight,
                          true);
     }
 

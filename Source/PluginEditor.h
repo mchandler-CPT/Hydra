@@ -36,6 +36,7 @@ private:
 
     void timerCallback() override;
     void updateHarmonyDebugLabel();
+    void updateHarmonicInversionDisplayLabels();
     void snapHarmonyParameterToNearestStep();
 
     HydraAudioProcessor& audioProcessor;
@@ -93,6 +94,8 @@ private:
     juce::Label filterReleaseLabel;
     juce::Label glideLabel;
     juce::Label harmonicInversionLabel;
+    juce::Label harmonicInversionModeLabel;
+    juce::Label harmonicInversionSequenceLabel;
     juce::Label harmonicTiltLabel;
     juce::Label kbTrackLabel;
     juce::Label hpCutoffLabel;
