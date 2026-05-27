@@ -69,7 +69,7 @@ void styleKnobValueReadout (juce::Slider& slider)
 juce::String formatTimeReadout (double seconds)
 {
     if (seconds < 1.0)
-        return juce::String (seconds * 1000.0, 3) + " ms";
+        return juce::String (juce::roundToInt (seconds * 1000.0)) + " ms";
 
     return juce::String (seconds, 3) + " s";
 }
