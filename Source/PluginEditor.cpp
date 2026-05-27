@@ -44,14 +44,7 @@ constexpr int kVolumeEnvelopeRowHeight = kEnvelopeRowHeight - 8;
 constexpr int kFilterEnvelopeRowHeight = kEnvelopeRowHeight + 8;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
 constexpr int kHarmonySnapButtonWidth = 46;
-constexpr int kHarmonySnapLabelHeight = 18;
-constexpr std::array<const char*, 5> kHarmonySnapStepLabels {
-    "0% MAJOR",
-    "30% FRICTION",
-    "60% BLOOM",
-    "80% TENSION",
-    "100% POWER"
-};
+constexpr int kHarmonyDebugLabelHeight = 18;
 } // namespace
 
 HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& processor)
@@ -78,18 +71,18 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
 
     configureRotaryKnob (harmonySlider, harmonyLabel, "HARMONY", false);
 
-    harmonyQuantizeButton.setButtonText ("SNAP");
+    harmonyQuantizeButton.setButtonText ("STEP");
     harmonyQuantizeButton.setClickingTogglesState (true);
     harmonyQuantizeButton.setColour (juce::ToggleButton::textColourId, juce::Colour (kMutedLabelColour));
     harmonyQuantizeButton.setColour (juce::ToggleButton::tickColourId, juce::Colour (0xffc4a574));
     harmonyQuantizeButton.setColour (juce::ToggleButton::tickDisabledColourId, juce::Colour (0xff6a6560));
     addAndMakeVisible (harmonyQuantizeButton);
 
-    harmonySnapValueLabel.setJustificationType (juce::Justification::centred);
-    harmonySnapValueLabel.setInterceptsMouseClicks (false, false);
-    harmonySnapValueLabel.setFont (juce::Font (juce::FontOptions { 10.0f, juce::Font::bold }));
-    harmonySnapValueLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
-    addAndMakeVisible (harmonySnapValueLabel);
+    harmonyDebugValueLabel.setJustificationType (juce::Justification::centred);
+    harmonyDebugValueLabel.setInterceptsMouseClicks (false, false);
+    harmonyDebugValueLabel.setFont (juce::Font (juce::FontOptions { 10.0f, juce::Font::plain }));
+    harmonyDebugValueLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
+    addAndMakeVisible (harmonyDebugValueLabel);
 
     configureRotaryKnob (filterCutoffSlider, filterCutoffLabel, "FILTER CUTOFF", true, " Hz");
     configureRotaryKnob (filterResSlider, filterResLabel, "RESONANCE", true);
@@ -130,6 +123,8 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
 
     harmonySlider.onValueChange = [this]
     {
+        updateHarmonyDebugLabel();
+
         if (isUpdatingHarmonySnap || ! harmonyQuantizeButton.getToggleState())
             return;
 
@@ -138,13 +133,14 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
 
     harmonyQuantizeButton.onClick = [this]
     {
-        updateHarmonySnapUi();
-
         if (harmonyQuantizeButton.getToggleState())
             snapHarmonyParameterToNearestStep();
+
+        updateHarmonyDebugLabel();
     };
 
-    updateHarmonySnapUi();
+    updateHarmonyDebugLabel();
+    startTimerHz (30);
 
     if (harmonyQuantizeButton.getToggleState())
         snapHarmonyParameterToNearestStep();
@@ -191,7 +187,26 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
 
 HydraAudioProcessorEditor::~HydraAudioProcessorEditor()
 {
+    stopTimer();
     setLookAndFeel (nullptr);
+}
+
+void HydraAudioProcessorEditor::timerCallback()
+{
+    updateHarmonyDebugLabel();
+}
+
+void HydraAudioProcessorEditor::updateHarmonyDebugLabel()
+{
+    auto* harmonyParam = audioProcessor.getApvts().getParameter ("harmony");
+
+    if (harmonyParam == nullptr)
+        return;
+
+    const auto& range = harmonyParam->getNormalisableRange();
+    const auto harmonyValue = range.convertFrom0to1 (harmonyParam->getValue());
+    harmonyDebugValueLabel.setText (juce::String::formatted ("%.3f", harmonyValue),
+                                    juce::dontSendNotification);
 }
 
 void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
@@ -228,11 +243,6 @@ void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
     addAndMakeVisible (label);
 }
 
-int HydraAudioProcessorEditor::nearestHarmonySnapIndex (const float harmonyValue) const noexcept
-{
-    return HydraHarmonySnap::stepIndexForHarmony (harmonyValue);
-}
-
 void HydraAudioProcessorEditor::snapHarmonyParameterToNearestStep()
 {
     auto* harmonyParam = audioProcessor.getApvts().getParameter ("harmony");
@@ -243,7 +253,6 @@ void HydraAudioProcessorEditor::snapHarmonyParameterToNearestStep()
     const auto& range = harmonyParam->getNormalisableRange();
     const auto denormalizedValue = range.convertFrom0to1 (harmonyParam->getValue());
     const auto snappedValue = HydraHarmonySnap::quantizeHarmonyValue (denormalizedValue);
-    const auto snapIndex = HydraHarmonySnap::stepIndexForQuantizedHarmony (snappedValue);
     const auto normalizedValue = range.convertTo0to1 (snappedValue);
 
     isUpdatingHarmonySnap = true;
@@ -253,17 +262,7 @@ void HydraAudioProcessorEditor::snapHarmonyParameterToNearestStep()
 
     isUpdatingHarmonySnap = false;
 
-    harmonySnapValueLabel.setText (kHarmonySnapStepLabels[static_cast<size_t> (snapIndex)],
-                                   juce::dontSendNotification);
-}
-
-void HydraAudioProcessorEditor::updateHarmonySnapUi()
-{
-    const auto snapEnabled = harmonyQuantizeButton.getToggleState();
-    harmonySnapValueLabel.setVisible (snapEnabled);
-
-    if (! snapEnabled)
-        harmonySnapValueLabel.setText ({}, juce::dontSendNotification);
+    updateHarmonyDebugLabel();
 }
 
 void HydraAudioProcessorEditor::configureSteppedRotaryKnob (juce::Slider& slider,
@@ -376,7 +375,7 @@ void HydraAudioProcessorEditor::resized()
         harmonySlider.toFront (false);
         harmonyLabel.toFront (false);
         harmonyQuantizeButton.toFront (false);
-        harmonySnapValueLabel.toFront (false);
+        harmonyDebugValueLabel.toFront (false);
         harmonicInversionSlider.toFront (false);
         harmonicInversionLabel.toFront (false);
         harmonicTiltSlider.toFront (false);
@@ -397,8 +396,8 @@ void HydraAudioProcessorEditor::resized()
         auto labelRow = harmonyRow.removeFromTop (kLabelBandHeight);
         harmonyQuantizeButton.setBounds (labelRow.removeFromRight (kHarmonySnapButtonWidth).reduced (2, 4));
         harmonyLabel.setBounds (labelRow);
-        harmonyRow.removeFromBottom (kHarmonySnapLabelHeight + 4);
-        harmonySnapValueLabel.setBounds (harmonyRow.removeFromBottom (kHarmonySnapLabelHeight));
+        harmonyRow.removeFromBottom (kHarmonyDebugLabelHeight + 4);
+        harmonyDebugValueLabel.setBounds (harmonyRow.removeFromBottom (kHarmonyDebugLabelHeight));
         harmonySlider.setBounds (harmonyRow.withSizeKeepingCentre (kColumnWidth, kEnvelopeKnobSize));
 
         const auto bottomColumnWidth = bottomRow.getWidth() / 2;

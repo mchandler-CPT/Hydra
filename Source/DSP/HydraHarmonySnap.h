@@ -1,51 +1,57 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 
 namespace HydraHarmonySnap
 {
-inline constexpr int numSteps = 5;
+inline constexpr int numSteps = 13;
 
-inline constexpr std::array<float, numSteps> positions { 0.0f, 0.3f, 0.6f, 0.8f, 1.0f };
+/** Physical slider coordinates aligned to the native inverse-log harmony timeline. */
+inline constexpr std::array<float, numSteps> steppedHarmonyPositions {
+    0.0000f, // recipe 0 -> 1 crossfade segment
+    0.0833f, // recipe 0 -> 1 crossfade segment
+    0.1667f, // recipe 0 -> 1 crossfade segment
+    0.2500f, // recipe 0 -> 1 crossfade segment
+    0.3333f, // recipe 1 -> 2 crossfade segment
+    0.4167f, // recipe 1 -> 2 crossfade segment
+    0.5000f, // recipe 1 -> 2 crossfade segment
+    0.5833f, // recipe 2 -> 3 crossfade segment
+    0.6667f, // recipe 2 -> 3 crossfade segment
+    0.7500f, // recipe 2 -> 3 crossfade segment
+    0.8333f, // recipe 3 -> 4 crossfade segment
+    0.9167f, // recipe 3 -> 4 crossfade segment
+    1.0000f  // recipe 3 -> 4 crossfade segment
+};
+
+inline int stepIndexForHarmony (float rawHarmony) noexcept
+{
+    const auto clampedHarmony = rawHarmony < 0.0f ? 0.0f : (rawHarmony > 1.0f ? 1.0f : rawHarmony);
+    int nearestIndex = 0;
+    auto nearestDistance = std::abs (steppedHarmonyPositions[0] - clampedHarmony);
+
+    for (int index = 1; index < numSteps; ++index)
+    {
+        const auto distance = std::abs (steppedHarmonyPositions[static_cast<size_t> (index)] - clampedHarmony);
+
+        if (distance < nearestDistance)
+        {
+            nearestDistance = distance;
+            nearestIndex = index;
+        }
+    }
+
+    return nearestIndex;
+}
 
 inline float quantizeHarmonyValue (float rawHarmony) noexcept
 {
-    const auto clampedHarmony = rawHarmony < 0.0f ? 0.0f : (rawHarmony > 1.0f ? 1.0f : rawHarmony);
-
-    if (clampedHarmony < 0.15f)
-        return 0.0f;
-
-    if (clampedHarmony < 0.45f)
-        return 0.3f;
-
-    if (clampedHarmony < 0.70f)
-        return 0.6f;
-
-    if (clampedHarmony < 0.90f)
-        return 0.8f;
-
-    return 1.0f;
+    return steppedHarmonyPositions[static_cast<size_t> (stepIndexForHarmony (rawHarmony))];
 }
 
 inline int stepIndexForQuantizedHarmony (float quantizedHarmony) noexcept
 {
-    if (quantizedHarmony < 0.1f)
-        return 0;
-
-    if (quantizedHarmony < 0.5f)
-        return 1;
-
-    if (quantizedHarmony < 0.7f)
-        return 2;
-
-    if (quantizedHarmony < 0.95f)
-        return 3;
-
-    return 4;
+    return stepIndexForHarmony (quantizedHarmony);
 }
 
-inline int stepIndexForHarmony (float rawHarmony) noexcept
-{
-    return stepIndexForQuantizedHarmony (quantizeHarmonyValue (rawHarmony));
-}
 } // namespace HydraHarmonySnap

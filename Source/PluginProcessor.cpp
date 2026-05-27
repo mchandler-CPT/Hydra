@@ -139,7 +139,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createP
                                                      juce::NormalisableRange<float> { 0.0f, 1.0f, 0.01f },
                                                      0.0f),
         std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kHarmonyQuantizeParamId, 1 },
-                                                    "Harmony Snap",
+                                                    "Harmony Stepped",
                                                     false)
     };
 }

@@ -50,6 +50,7 @@ HarmonicTargetPacket HydraMacroMapper::computeTargets (float depth,
     const auto Y = rawGirth * juce::jlimit (0.0f, 1.0f, X * 2.0f);
 
     const auto harmonyClamped = juce::jlimit (0.0f, 1.0f, harmony);
+
     const auto scaledIndex = harmonyClamped * 4.0f;
     auto baseIdx = static_cast<int> (scaledIndex);
     auto frac = scaledIndex - static_cast<float> (baseIdx);

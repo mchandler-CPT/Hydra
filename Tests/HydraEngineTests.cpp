@@ -520,25 +520,29 @@ TEST_CASE ("HydraEngine Voice Lifecycle", "[HydraEngine]")
     }
 }
 
-TEST_CASE ("HydraHarmonySnap quantizes harmony to continuum anchors", "[HydraHarmonySnap]")
+TEST_CASE ("HydraHarmonySnap quantizes harmony to timeline coordinates", "[HydraHarmonySnap]")
 {
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.14f) == Catch::Approx (0.0f).margin (1.0e-6f));
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.15f) == Catch::Approx (0.3f).margin (1.0e-6f));
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.44f) == Catch::Approx (0.3f).margin (1.0e-6f));
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.45f) == Catch::Approx (0.6f).margin (1.0e-6f));
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.69f) == Catch::Approx (0.6f).margin (1.0e-6f));
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.70f) == Catch::Approx (0.8f).margin (1.0e-6f));
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.89f) == Catch::Approx (0.8f).margin (1.0e-6f));
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.90f) == Catch::Approx (1.0f).margin (1.0e-6f));
-    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (1.00f) == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::numSteps == 13);
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.0f) == Catch::Approx (0.0f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (1.0f) == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.07f) == Catch::Approx (0.0833f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.31f) == Catch::Approx (0.3333f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::quantizeHarmonyValue (0.86f) == Catch::Approx (0.8333f).margin (1.0e-6f));
+    REQUIRE (HydraHarmonySnap::stepIndexForHarmony (0.94f) == 11);
+    REQUIRE (HydraHarmonySnap::stepIndexForHarmony (0.95f) == 11);
 }
 
-TEST_CASE ("HydraHarmonySnap POWER step preserves recipe 4 upper octave via mapper", "[HydraHarmonySnap]")
+TEST_CASE ("HydraHarmonySnap max step stays identical to continuous endpoint", "[HydraHarmonySnap]")
 {
     HydraMacroMapper mapper;
-    const auto powerHarmony = HydraHarmonySnap::quantizeHarmonyValue (0.95f);
-    const auto packet = mapper.computeTargets (1.0f, 0.5f, powerHarmony);
+    const auto steppedHarmony = HydraHarmonySnap::quantizeHarmonyValue (1.0f);
+    const auto steppedPacket = mapper.computeTargets (1.0f, 0.5f, steppedHarmony, 0);
+    const auto continuousPacket = mapper.computeTargets (1.0f, 0.5f, 1.0f, 0);
 
-    REQUIRE (powerHarmony == Catch::Approx (1.0f).margin (1.0e-6f));
-    REQUIRE (packet.frequencyMultipliers[6] == Catch::Approx (16.0225f).margin (0.01f));
+    REQUIRE (steppedHarmony == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (steppedPacket.frequencyMultipliers[0] == Catch::Approx (1.0f).margin (1.0e-6f));
+
+    for (size_t partialIndex = 0; partialIndex < steppedPacket.frequencyMultipliers.size(); ++partialIndex)
+        REQUIRE (steppedPacket.frequencyMultipliers[partialIndex]
+                 == Catch::Approx (continuousPacket.frequencyMultipliers[partialIndex]).margin (1.0e-6f));
 }

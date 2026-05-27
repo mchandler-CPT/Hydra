@@ -10,7 +10,8 @@
 
 #include <memory>
 
-class HydraAudioProcessorEditor : public juce::AudioProcessorEditor
+class HydraAudioProcessorEditor : public juce::AudioProcessorEditor,
+                                  private juce::Timer
 {
 public:
     explicit HydraAudioProcessorEditor (HydraAudioProcessor&);
@@ -32,9 +33,9 @@ private:
                                      juce::Label& label,
                                      const juce::String& labelText);
 
-    void updateHarmonySnapUi();
+    void timerCallback() override;
+    void updateHarmonyDebugLabel();
     void snapHarmonyParameterToNearestStep();
-    int nearestHarmonySnapIndex (float harmonyValue) const noexcept;
 
     HydraAudioProcessor& audioProcessor;
     BoutiqueLookAndFeel customLookAndFeel;
@@ -51,7 +52,7 @@ private:
     juce::Slider gainSlider;
 
     juce::Label harmonyLabel;
-    juce::Label harmonySnapValueLabel;
+    juce::Label harmonyDebugValueLabel;
     juce::Label filterCutoffLabel;
     juce::Label filterResLabel;
     juce::Label gainLabel;

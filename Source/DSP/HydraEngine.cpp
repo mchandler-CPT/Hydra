@@ -146,7 +146,10 @@ void HydraEngine::applyMacroTargets() noexcept
         ? HydraHarmonySnap::quantizeHarmonyValue (clampedHarmony)
         : clampedHarmony;
 
-    const auto packet = macroMapper.computeTargets (depth, girth, effectiveHarmonyForMapper, harmonicInversionIndex);
+    const auto packet = macroMapper.computeTargets (depth,
+                                                    girth,
+                                                    effectiveHarmonyForMapper,
+                                                    harmonicInversionIndex);
     frequencyMultipliers = packet.frequencyMultipliers;
     assignedHarmonicOrders = packet.assignedHarmonicOrders;
 
