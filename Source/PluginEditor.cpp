@@ -195,11 +195,11 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     harmonicInversionSlider.onValueChange = [this] { updateHarmonicInversionDisplayLabels(); };
 
     harmonicInversionAttachment =
-        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "harmonicInversion", harmonicInversionSlider);
+        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "inversion", harmonicInversionSlider);
 
     updateHarmonicInversionDisplayLabels();
     harmonicTiltAttachment =
-        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "harmonicTilt", harmonicTiltSlider);
+        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "tilt", harmonicTiltSlider);
     kbTrackAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "kbTrack", kbTrackSlider);
     hpCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "hpCutoff", hpCutoffSlider);
     overloadAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterOverload", overloadSlider);
