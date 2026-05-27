@@ -25,6 +25,7 @@ public:
         unitless2dp,
         unitless3dp,
         percent,
+        bipolar2dp,
         bipolar,
         hertz,
         timeSeconds

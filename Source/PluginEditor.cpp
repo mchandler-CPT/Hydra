@@ -120,6 +120,16 @@ void applyKnobReadout (juce::Slider& slider,
             };
             break;
 
+        case HydraAudioProcessorEditor::KnobReadoutKind::bipolar2dp:
+            slider.setNumDecimalPlacesToDisplay (2);
+            slider.textFromValueFunction = [] (double value)
+            {
+                const auto sign = value > 0.0 ? "+" : "";
+                return sign + juce::String (value, 2);
+            };
+            slider.valueFromTextFunction = [] (const juce::String& text) { return text.getDoubleValue(); };
+            break;
+
         case HydraAudioProcessorEditor::KnobReadoutKind::bipolar:
             slider.setNumDecimalPlacesToDisplay (3);
             slider.textFromValueFunction = [] (double value)
@@ -212,12 +222,12 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     addAndMakeVisible (harmonicInversionSequenceLabel);
     configureRotaryKnob (harmonicTiltSlider, harmonicTiltLabel, "HARMONIC TILT", KnobReadoutKind::bipolar);
     harmonicTiltSlider.setDoubleClickReturnValue (true, 0.0);
-    configureRotaryKnob (kbTrackSlider, kbTrackLabel, "KB TRACK", KnobReadoutKind::unitless3dp);
+    configureRotaryKnob (kbTrackSlider, kbTrackLabel, "KB TRACK", KnobReadoutKind::unitless2dp);
     configureRotaryKnob (hpCutoffSlider, hpCutoffLabel, "HP CUTOFF", KnobReadoutKind::hertz, " Hz");
-    configureRotaryKnob (overloadSlider, overloadLabel, "OVERLOAD", KnobReadoutKind::unitless3dp);
+    configureRotaryKnob (overloadSlider, overloadLabel, "OVERLOAD", KnobReadoutKind::unitless2dp);
 
-    configureAdsrKnob (envWarpSlider, envWarpLabel, "ENV WARP", KnobReadoutKind::bipolar);
-    configureAdsrKnob (egrAmountSlider, egrAmountLabel, "EGR AMOUNT", KnobReadoutKind::bipolar);
+    configureAdsrKnob (envWarpSlider, envWarpLabel, "ENV WARP", KnobReadoutKind::bipolar2dp);
+    configureAdsrKnob (egrAmountSlider, egrAmountLabel, "EGR AMOUNT", KnobReadoutKind::bipolar2dp);
     configureAdsrKnob (attackSlider, attackLabel, "ATTACK", KnobReadoutKind::timeSeconds);
     configureAdsrKnob (decaySlider, decayLabel, "DECAY", KnobReadoutKind::timeSeconds);
     configureAdsrKnob (sustainSlider, sustainLabel, "SUSTAIN", KnobReadoutKind::unitless3dp);
@@ -351,11 +361,11 @@ void HydraAudioProcessorEditor::refreshKnobReadouts()
     applyKnobReadout (gainSlider, KnobReadoutKind::unitless3dp);
     applyKnobReadout (glideSlider, KnobReadoutKind::timeSeconds);
     applyKnobReadout (harmonicTiltSlider, KnobReadoutKind::bipolar);
-    applyKnobReadout (kbTrackSlider, KnobReadoutKind::unitless3dp);
+    applyKnobReadout (kbTrackSlider, KnobReadoutKind::unitless2dp);
     applyKnobReadout (hpCutoffSlider, KnobReadoutKind::hertz, " Hz");
-    applyKnobReadout (overloadSlider, KnobReadoutKind::unitless3dp);
-    applyKnobReadout (envWarpSlider, KnobReadoutKind::bipolar);
-    applyKnobReadout (egrAmountSlider, KnobReadoutKind::bipolar);
+    applyKnobReadout (overloadSlider, KnobReadoutKind::unitless2dp);
+    applyKnobReadout (envWarpSlider, KnobReadoutKind::bipolar2dp);
+    applyKnobReadout (egrAmountSlider, KnobReadoutKind::bipolar2dp);
     applyKnobReadout (attackSlider, KnobReadoutKind::timeSeconds);
     applyKnobReadout (decaySlider, KnobReadoutKind::timeSeconds);
     applyKnobReadout (sustainSlider, KnobReadoutKind::unitless3dp);
