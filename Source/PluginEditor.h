@@ -34,6 +34,10 @@ private:
                                      juce::Label& label,
                                      const juce::String& labelText);
 
+    void updateEnvelopeTabBindings();
+    void selectVolumeEnvelopeTab();
+    void selectFilterEnvelopeTab();
+
     void timerCallback() override;
     void updateHarmonyDebugLabel();
     void updateHarmonicInversionDisplayLabels();
@@ -43,9 +47,9 @@ private:
     ProceduralDarkLookAndFeel customLookAndFeel;
 
     XyExplorer xyExplorer;
-    juce::GroupComponent envelopeControlGroup;
-    juce::GroupComponent volumeEnvelopeGroup;
-    juce::GroupComponent filterEnvelopeGroup;
+
+    SnapToggleButton volumeEnvButton;
+    SnapToggleButton filterEnvButton;
 
     juce::Slider harmonySlider;
     SnapToggleButton harmonyQuantizeButton;
@@ -71,10 +75,6 @@ private:
     juce::Slider decaySlider;
     juce::Slider sustainSlider;
     juce::Slider releaseSlider;
-    juce::Slider filterAttackSlider;
-    juce::Slider filterDecaySlider;
-    juce::Slider filterSustainSlider;
-    juce::Slider filterReleaseSlider;
     juce::Slider glideSlider;
     juce::Slider harmonicInversionSlider;
     juce::Slider harmonicTiltSlider;
@@ -88,10 +88,6 @@ private:
     juce::Label decayLabel;
     juce::Label sustainLabel;
     juce::Label releaseLabel;
-    juce::Label filterAttackLabel;
-    juce::Label filterDecayLabel;
-    juce::Label filterSustainLabel;
-    juce::Label filterReleaseLabel;
     juce::Label glideLabel;
     juce::Label harmonicInversionLabel;
     juce::Label harmonicInversionModeLabel;
@@ -107,10 +103,6 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> decayAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sustainAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> releaseAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterAttackAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterDecayAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterSustainAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> filterReleaseAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> glideAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> harmonicInversionAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> harmonicTiltAttachment;
