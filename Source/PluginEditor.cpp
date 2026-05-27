@@ -415,6 +415,10 @@ void HydraAudioProcessorEditor::resized()
         harmonicInversionSequenceLabel.toFront (false);
         harmonicTiltSlider.toFront (false);
         harmonicTiltLabel.toFront (false);
+        filterCutoffSlider.toFront (false);
+        filterCutoffLabel.toFront (false);
+        filterResSlider.toFront (false);
+        filterResLabel.toFront (false);
         glideSlider.toFront (false);
         glideLabel.toFront (false);
         overloadSlider.toFront (false);
@@ -459,11 +463,15 @@ void HydraAudioProcessorEditor::resized()
     }
 
     {
-        auto gainRow = rightHarmonicCluster.removeFromTop (kHarmonicSubRowHeight);
+        auto gainRow = rightHarmonicCluster.removeFromTop (kHarmonyRowHeight);
         rightHarmonicCluster.removeFromTop (kHarmonicSubRowGap);
         auto bottomRow = rightHarmonicCluster;
 
-        placeKnobColumn (gainRow, gainSlider, gainLabel, kRotaryBodyHeight, true);
+        auto gainStack = gainRow.withSizeKeepingCentre (kHarmonyKnobSize, gainRow.getHeight());
+        gainLabel.setBounds (gainStack.removeFromTop (kLabelBandHeight));
+        gainStack.removeFromTop (kHarmonyKnobLabelGap);
+        gainSlider.setBounds (gainStack.removeFromTop (kHarmonyKnobSize)
+                                         .withSizeKeepingCentre (kHarmonyKnobSize, kHarmonyKnobSize));
 
         const auto bottomColumnWidth = bottomRow.getWidth() / 2;
         auto glideColumn = bottomRow.removeFromLeft (bottomColumnWidth);
