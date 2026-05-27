@@ -32,6 +32,7 @@ private:
 
     float normalizedX { 0.2f };
     float normalizedY { 0.0f };
+    float waveformPeakSmoothed { 0.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (XyExplorer)
 };
