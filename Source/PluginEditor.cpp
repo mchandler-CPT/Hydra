@@ -7,7 +7,7 @@
 namespace
 {
 constexpr int kEditorWidth = 750;
-constexpr int kKeyboardHeight = 70;
+constexpr int kKeyboardStripHeight = 90;
 constexpr int kColumnWidth = 118;
 constexpr int kLabelBandHeight = 24;
 constexpr int kCutoffTextBoxWidth = 70;
@@ -53,7 +53,7 @@ constexpr int kEnvelopeAdsrRowHeight = kLabelBandHeight + kEnvelopeKnobSize + 6;
 constexpr int kEnvelopeSectionHeight = kEnvelopeTabRowHeight + kEnvelopeAdsrRowHeight + 4;
 constexpr int kControlPanelHeight = kHarmonicZoneHeight + kZoneGap + kModulationZoneHeight + kZoneGap
                                   + kEnvelopeSectionHeight + kFooterStripHeight;
-constexpr int kEditorHeight = kControlPanelHeight + kKeyboardHeight;
+constexpr int kEditorHeightWithKeyboard = kControlPanelHeight + kKeyboardStripHeight;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
 
 void styleKnobLabel (juce::Label& label)
@@ -99,7 +99,9 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
       xyExplorer (processor),
       keyboardComponent (processor.getKeyboardState(), juce::MidiKeyboardComponent::horizontalKeyboard)
 {
-    setSize (kEditorWidth, kEditorHeight);
+    const bool isStandalone = (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone);
+    keyboardComponent.setVisible (isStandalone);
+    setSize (kEditorWidth, isStandalone ? kEditorHeightWithKeyboard : kControlPanelHeight);
 
     addAndMakeVisible (keyboardComponent);
     addAndMakeVisible (xyExplorer);
@@ -382,15 +384,19 @@ void HydraAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (juce::Colour (0xff161412));
 
-    const auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
+    auto controlPanel = getLocalBounds();
+
+    if (keyboardComponent.isVisible())
+        controlPanel.removeFromBottom (kKeyboardStripHeight);
+
     const auto footerBounds = juce::Rectangle<int> (kPanelHorizontalMargin,
-                                                    controlPanel.getHeight() - kFooterStripHeight,
+                                                    controlPanel.getBottom() - kFooterStripHeight,
                                                     controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
                                                     kFooterBrandHeight);
 
     g.setColour (juce::Colour (0xff6a6560));
     g.setFont (juce::Font (juce::FontOptions { 10.0f }));
-    g.drawText ("THE HYDRA — HARMONIC SCAFFOLD SYNTH",
+    g.drawText ("THE HYDRA // HARMONIC SCAFFOLD SYNTH",
                 footerBounds,
                 juce::Justification::centredRight,
                 true);
@@ -398,11 +404,18 @@ void HydraAudioProcessorEditor::paint (juce::Graphics& g)
 
 void HydraAudioProcessorEditor::resized()
 {
-    keyboardComponent.setBounds (0, kControlPanelHeight, kEditorWidth, kKeyboardHeight);
+    auto bounds = getLocalBounds();
 
-    auto controlPanel = getLocalBounds().withHeight (kControlPanelHeight);
+    if (keyboardComponent.isVisible())
+        keyboardComponent.setBounds (bounds.removeFromBottom (kKeyboardStripHeight));
 
-    const auto harmonicZone = controlPanel.withY (kHarmonicZone1Top).withHeight (kHarmonicZoneHeight);
+    const auto controlPanel = bounds;
+    const auto controlPanelOriginY = controlPanel.getY();
+
+    const auto harmonicZone = juce::Rectangle<int> (controlPanel.getX(),
+                                                    controlPanelOriginY + kHarmonicZone1Top,
+                                                    controlPanel.getWidth(),
+                                                    kHarmonicZoneHeight);
     const auto harmonicStackTop = harmonicZone.getY();
     const auto xyPadX = (getWidth() - kXyPadSize) / 2;
     const auto sideGap = 10;
@@ -519,7 +532,10 @@ void HydraAudioProcessorEditor::resized()
 
     bringHarmonicControlsToFront();
 
-    const auto modulationRow = controlPanel.withY (kModulationZoneTop).withHeight (kModulationZoneHeight);
+    const auto modulationRow = juce::Rectangle<int> (controlPanel.getX(),
+                                                   controlPanelOriginY + kModulationZoneTop,
+                                                   controlPanel.getWidth(),
+                                                   kModulationZoneHeight);
     const auto modulationInnerWidth = getWidth() - (2 * kPanelHorizontalMargin);
     const auto modulationColumnWidth = modulationInnerWidth / 6;
 
@@ -543,7 +559,7 @@ void HydraAudioProcessorEditor::resized()
     const auto adsrClusterWidth = modulationColumnWidth * 4;
 
     auto envelopeArea = juce::Rectangle<int> (kPanelHorizontalMargin,
-                                              kEnvelopeZoneTop,
+                                              controlPanelOriginY + kEnvelopeZoneTop,
                                               modulationInnerWidth,
                                               kEnvelopeSectionHeight);
 
