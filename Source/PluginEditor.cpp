@@ -45,6 +45,12 @@ constexpr int kFilterEnvelopeRowHeight = kEnvelopeRowHeight + 8;
 constexpr juce::uint32 kMutedLabelColour = 0xff9a948c;
 constexpr int kHarmonySnapButtonWidth = 46;
 constexpr int kHarmonyDebugLabelHeight = 18;
+
+void styleKnobLabel (juce::Label& label)
+{
+    label.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::bold }));
+    label.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
+}
 } // namespace
 
 HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& processor)
@@ -53,7 +59,6 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
       xyExplorer (processor),
       keyboardComponent (processor.getKeyboardState(), juce::MidiKeyboardComponent::horizontalKeyboard)
 {
-    setLookAndFeel (&customLookAndFeel);
     setSize (kEditorWidth, kEditorHeight);
 
     addAndMakeVisible (keyboardComponent);
@@ -105,11 +110,6 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     configureAdsrKnob (filterDecaySlider, filterDecayLabel, "DECAY");
     configureAdsrKnob (filterSustainSlider, filterSustainLabel, "SUSTAIN");
     configureAdsrKnob (filterReleaseSlider, filterReleaseLabel, "RELEASE");
-
-    filterCutoffLabel.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::bold }));
-    filterCutoffLabel.setColour (juce::Label::textColourId, juce::Colour (kMutedLabelColour));
-    filterResLabel.setFont (juce::Font (juce::FontOptions { 12.0f, juce::Font::bold }));
-    filterResLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.5f));
 
     auto& apvts = audioProcessor.getApvts();
 
@@ -188,7 +188,26 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
 HydraAudioProcessorEditor::~HydraAudioProcessorEditor()
 {
     stopTimer();
-    setLookAndFeel (nullptr);
+    harmonySlider.setLookAndFeel (nullptr);
+    filterCutoffSlider.setLookAndFeel (nullptr);
+    filterResSlider.setLookAndFeel (nullptr);
+    gainSlider.setLookAndFeel (nullptr);
+    envWarpSlider.setLookAndFeel (nullptr);
+    egrAmountSlider.setLookAndFeel (nullptr);
+    attackSlider.setLookAndFeel (nullptr);
+    decaySlider.setLookAndFeel (nullptr);
+    sustainSlider.setLookAndFeel (nullptr);
+    releaseSlider.setLookAndFeel (nullptr);
+    filterAttackSlider.setLookAndFeel (nullptr);
+    filterDecaySlider.setLookAndFeel (nullptr);
+    filterSustainSlider.setLookAndFeel (nullptr);
+    filterReleaseSlider.setLookAndFeel (nullptr);
+    glideSlider.setLookAndFeel (nullptr);
+    harmonicInversionSlider.setLookAndFeel (nullptr);
+    harmonicTiltSlider.setLookAndFeel (nullptr);
+    kbTrackSlider.setLookAndFeel (nullptr);
+    hpCutoffSlider.setLookAndFeel (nullptr);
+    overloadSlider.setLookAndFeel (nullptr);
 }
 
 void HydraAudioProcessorEditor::timerCallback()
@@ -216,6 +235,7 @@ void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
                                                      const juce::String& valueSuffix)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
+    slider.setLookAndFeel (&customLookAndFeel);
     slider.setTextBoxStyle (juce::Slider::TextBoxBelow,
                             showValueTextBox,
                             kCutoffTextBoxWidth,
@@ -240,6 +260,7 @@ void HydraAudioProcessorEditor::configureRotaryKnob (juce::Slider& slider,
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
     label.setInterceptsMouseClicks (false, false);
+    styleKnobLabel (label);
     addAndMakeVisible (label);
 }
 
@@ -270,6 +291,7 @@ void HydraAudioProcessorEditor::configureSteppedRotaryKnob (juce::Slider& slider
                                                              const juce::String& labelText)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
+    slider.setLookAndFeel (&customLookAndFeel);
     slider.setTextBoxStyle (juce::Slider::TextBoxBelow, true, kCutoffTextBoxWidth, kCutoffTextBoxHeight);
     slider.setColour (juce::Slider::textBoxTextColourId, juce::Colours::white.withAlpha (0.6f));
     slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
@@ -279,6 +301,7 @@ void HydraAudioProcessorEditor::configureSteppedRotaryKnob (juce::Slider& slider
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
     label.setInterceptsMouseClicks (false, false);
+    styleKnobLabel (label);
     addAndMakeVisible (label);
 }
 
@@ -287,12 +310,14 @@ void HydraAudioProcessorEditor::configureAdsrKnob (juce::Slider& slider,
                                                     const juce::String& labelText)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
+    slider.setLookAndFeel (&customLookAndFeel);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     addAndMakeVisible (slider);
 
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
     label.setInterceptsMouseClicks (false, false);
+    styleKnobLabel (label);
     addAndMakeVisible (label);
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BoutiqueLookAndFeel.h"
+#include "ProceduralDarkLookAndFeel.h"
 #include "PluginProcessor.h"
 #include "UI/XyExplorer.h"
 
@@ -38,7 +38,7 @@ private:
     void snapHarmonyParameterToNearestStep();
 
     HydraAudioProcessor& audioProcessor;
-    BoutiqueLookAndFeel customLookAndFeel;
+    ProceduralDarkLookAndFeel customLookAndFeel;
 
     XyExplorer xyExplorer;
     juce::GroupComponent envelopeControlGroup;
