@@ -1,5 +1,13 @@
 #pragma once
 
+#include <juce_core/juce_core.h>
+
+inline float clampLowPassCutoffHz (float cutoffHz, double sampleRate) noexcept
+{
+    const auto maxSafeCutoff = juce::jmin (21000.0f, static_cast<float> (sampleRate) * 0.475f);
+    return juce::jmin (cutoffHz, maxSafeCutoff);
+}
+
 class ZdfLadderFilter
 {
 public:

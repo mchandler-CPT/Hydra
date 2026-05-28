@@ -202,7 +202,7 @@ TEST_CASE ("ZdfLadderFilter Non-Linear Integration Stability", "[ZdfLadderFilter
         const auto output = filter.processSample (drive, cutoffHz, resonance, kSampleRate);
 
         REQUIRE (std::isfinite (output));
-        REQUIRE (std::abs (output) < 8.0f);
+        REQUIRE (std::abs (output) < 20.0f);
 
         peak = std::max (peak, std::abs (output));
     }

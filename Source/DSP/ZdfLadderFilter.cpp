@@ -19,13 +19,16 @@ float ZdfLadderFilter::processSample (float input, float cutoffHz, float resonan
         input = 0.0f;
 
     if (! std::isfinite (cutoffHz))
-        cutoffHz = 20000.0f;
+        cutoffHz = 21000.0f;
+
+    cutoffHz = clampLowPassCutoffHz (cutoffHz, sampleRate);
 
     const auto clampedResonance = juce::jlimit (0.0f, 4.0f, resonance);
 
     const auto maxSwing = std::min (600.0f, cutoffHz * 0.75f);
     const auto modulatedCutoff = cutoffHz + (lastOutput * clampedResonance * maxSwing);
-    const auto clampedCutoff = juce::jlimit (20.0f, 0.40f * static_cast<float> (sampleRate), modulatedCutoff);
+    const auto maxSafeCutoff = clampLowPassCutoffHz (21000.0f, sampleRate);
+    const auto clampedCutoff = juce::jlimit (20.0f, maxSafeCutoff, modulatedCutoff);
 
     const auto g = std::tan (juce::MathConstants<float>::pi * clampedCutoff / static_cast<float> (sampleRate));
     const auto h = g / (1.0f + g);

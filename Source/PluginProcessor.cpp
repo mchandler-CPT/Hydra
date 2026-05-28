@@ -38,7 +38,7 @@ int readHarmonicInversionIndex (const juce::AudioProcessorValueTreeState& apvts)
 
 juce::AudioProcessorValueTreeState::ParameterLayout HydraAudioProcessor::createParameterLayout()
 {
-    juce::NormalisableRange<float> cutoffRange (20.0f, 20000.0f, 0.0f, 0.2f);
+    juce::NormalisableRange<float> cutoffRange (20.0f, 21000.0f, 0.0f, 0.2f);
     juce::NormalisableRange<float> attackRange (0.001f, 5.0f, 0.0f, 0.5f);
     juce::NormalisableRange<float> decayRange (0.01f, 5.0f, 0.0f, 0.5f);
     juce::NormalisableRange<float> releaseRange (0.01f, 10.0f, 0.0f, 0.5f);
@@ -309,12 +309,13 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         for (int sample = 0; sample < osNumSamples; ++sample)
         {
             const auto cutoffHz = modulatedCutoff != nullptr ? modulatedCutoff[sample] : cutoffParam->load();
+            const auto warpedCutoff = clampLowPassCutoffHz (cutoffHz, oversampledSampleRate);
             leftChannel[sample] = filterL.processSample (leftChannel[sample],
-                                                           cutoffHz,
+                                                           warpedCutoff,
                                                            resonance,
                                                            oversampledSampleRate);
             rightChannel[sample] = filterR.processSample (rightChannel[sample],
-                                                            cutoffHz,
+                                                            warpedCutoff,
                                                             resonance,
                                                             oversampledSampleRate);
         }
@@ -352,8 +353,9 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         {
             const auto monoSample = 0.5f * (leftChannel[sample] + monoRightScratch[static_cast<size_t> (sample)]);
             const auto cutoffHz = modulatedCutoff != nullptr ? modulatedCutoff[sample] : cutoffParam->load();
+            const auto warpedCutoff = clampLowPassCutoffHz (cutoffHz, oversampledSampleRate);
             leftChannel[sample] = filterL.processSample (monoSample,
-                                                           cutoffHz,
+                                                           warpedCutoff,
                                                            resonance,
                                                            oversampledSampleRate);
         }

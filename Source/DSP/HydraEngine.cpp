@@ -446,7 +446,7 @@ void HydraEngine::setHarmonyQuantize (bool newHarmonyQuantize) noexcept
 
 void HydraEngine::setFilterCutoff (float cutoffHz) noexcept
 {
-    smoothedCutoffHz.setTargetValue (juce::jlimit (20.0f, 20000.0f, cutoffHz));
+    smoothedCutoffHz.setTargetValue (juce::jlimit (20.0f, 21000.0f, cutoffHz));
 }
 
 void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept
@@ -499,7 +499,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             baselineCutoff * std::pow (2.0f, kbTrack * octavesFromAnchor);
         const auto dynamicCutoff =
             trackedCutoffFloor + (filterEnvAmt * egrAmount * 3500.0f);
-        const auto cutoffHz = juce::jlimit (20.0f, 20000.0f, dynamicCutoff);
+        const auto cutoffHz = juce::jlimit (20.0f, 21000.0f, dynamicCutoff);
         filterCutoffBuffer[static_cast<size_t> (sampleIndex)] = cutoffHz;
         const auto currentBaseFreq = smoothedFrequency.getNextValue();
 
