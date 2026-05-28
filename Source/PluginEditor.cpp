@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "DSP/HydraHarmonySnap.h"
+#include "UI/ChromeTextButton.h"
 #include "UI/HydraPalette.h"
 
 #include <array>
@@ -8,7 +9,9 @@
 namespace
 {
 constexpr int kEditorWidth = 750;
-constexpr int kKeyboardStripHeight = 90;
+constexpr int kHeaderHeight = 48;
+constexpr int kHeaderZoneInnerPad = 4;
+constexpr int kCompactKeyboardHeight = 72;
 constexpr int kColumnWidth = 118;
 constexpr int kLabelBandHeight = 24;
 constexpr int kCutoffTextBoxWidth = 88;
@@ -18,14 +21,13 @@ constexpr int kRotaryBodyHeight = 72;
 constexpr int kRotarySliderWithReadoutHeight = kRotaryBodyHeight + kCutoffTextBoxHeight;
 constexpr int kKnobRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + kControlColumnBottomInset;
 constexpr int kPanelHorizontalMargin = 10;
-constexpr int kPanelTopMargin = 12;
 constexpr int kZoneGap = 8;
 constexpr int kZoneCardInset = 4;
 constexpr int kHarmonicZoneInnerPad = 4;
 constexpr int kXyPadInset = 4;
 constexpr int kEnvelopeZoneTopPad = 5;
 constexpr int kKeyboardLift = 2;
-constexpr int kFooterZoneGap = 12;
+constexpr int kFooterZoneGap = 4;
 constexpr int kFooterTextBottomPadding = 8;
 constexpr int kHarmonicSubRowGap = 6;
 constexpr int kHarmonyKnobSize = 98;
@@ -42,12 +44,19 @@ constexpr int kHarmonicSubRowHeight = kLabelBandHeight + kRotaryBodyHeight + kHa
 constexpr int kHarmonicSideStackHeight = kHarmonyRowHeight + kHarmonicSubRowGap + kHarmonicSubRowHeight;
 constexpr int kXyPadSize = kHarmonicSideStackHeight;
 constexpr int kHarmonicZoneHeight = kHarmonicSideStackHeight + kZoneCardInset + (2 * kHarmonicZoneInnerPad);
-constexpr int kHarmonicZone1Top = kPanelTopMargin;
+constexpr int kHarmonicZone1Top = 0;
 constexpr int kModulationZoneTop = kHarmonicZone1Top + kHarmonicZoneHeight + kZoneGap;
 constexpr int kModulationZoneInnerPad = 4;
 constexpr int kModulationZoneHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + 6 + (2 * kModulationZoneInnerPad);
 constexpr int kEnvelopeZoneTop = kModulationZoneTop + kModulationZoneHeight + kZoneGap;
 constexpr int kFooterBrandHeight = 18;
+constexpr int kPresetNavButtonWidth = 26;
+constexpr int kPresetNavButtonHeight = kHarmonySnapButtonHeight;
+constexpr int kPresetActionButtonWidth = 52;
+constexpr int kPresetFolderButtonWidth = 30;
+constexpr int kHeaderChromeHeight = kZoneGap + kHeaderHeight + kZoneGap;
+constexpr int kPresetBarHorizontalGap = 8;
+constexpr int kPresetNavInnerGap = 4;
 constexpr int kFooterStripHeight = kFooterZoneGap + kFooterBrandHeight + kFooterTextBottomPadding;
 constexpr int kEnvelopeKnobSize = kRotaryBodyHeight;
 constexpr int kEnvelopeInnerPadding = 10;
@@ -58,7 +67,9 @@ constexpr int kEnvelopeAdsrRowHeight = kLabelBandHeight + kRotarySliderWithReado
 constexpr int kEnvelopeSectionHeight = kEnvelopeTabRowHeight + kEnvelopeAdsrRowHeight + 4 + kEnvelopeZoneTopPad;
 constexpr int kControlPanelHeight = kHarmonicZoneHeight + kZoneGap + kModulationZoneHeight + kZoneGap
                                   + kEnvelopeSectionHeight + kFooterStripHeight;
-constexpr int kEditorHeightWithKeyboard = kControlPanelHeight + kKeyboardStripHeight - kKeyboardLift;
+constexpr int kBottomChromeHeight = kCompactKeyboardHeight - kKeyboardLift;
+constexpr int kEditorHeightPlugin = kHeaderChromeHeight + kControlPanelHeight;
+constexpr int kEditorHeightWithKeyboard = kHeaderChromeHeight + kControlPanelHeight + kBottomChromeHeight;
 void styleKnobLabel (juce::Label& label)
 {
     label.setFont (juce::Font (juce::FontOptions { 11.0f, juce::Font::bold }));
@@ -191,12 +202,15 @@ constexpr std::array<InversionDisplayText, 6> kInversionDisplayTexts {{
 HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& processor)
     : AudioProcessorEditor (&processor),
       audioProcessor (processor),
+      usesKeyboardStrip (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone),
       xyExplorer (processor),
       keyboardComponent (processor.getKeyboardState(), juce::MidiKeyboardComponent::horizontalKeyboard)
 {
-    const bool isStandalone = (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone);
-    keyboardComponent.setVisible (isStandalone);
-    setSize (kEditorWidth, isStandalone ? kEditorHeightWithKeyboard : kControlPanelHeight);
+    keyboardComponent.setVisible (usesKeyboardStrip);
+    setSize (kEditorWidth, usesKeyboardStrip ? kEditorHeightWithKeyboard : kEditorHeightPlugin);
+
+    if (! usesKeyboardStrip)
+        setResizeLimits (kEditorWidth, kEditorHeightPlugin, kEditorWidth, kEditorHeightPlugin);
 
     keyboardComponent.setOpaque (false);
     keyboardComponent.setColour (juce::MidiKeyboardComponent::whiteNoteColourId,
@@ -298,9 +312,39 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     hpCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "hpCutoff", hpCutoffSlider);
     overloadAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterOverload", overloadSlider);
 
+    mPrevButton.setButtonText ("<");
+    mNextButton.setButtonText (">");
+    mSaveButton.setButtonText ("SAVE");
+    mSetFolderButton.setButtonText ("...");
+    mPresetLabel.setJustificationType (juce::Justification::centred);
+    mPresetLabel.setInterceptsMouseClicks (false, false);
+    mPresetLabel.setColour (juce::Label::textColourId, HydraPalette::colour (HydraPalette::accentGoldBright));
+
+    addAndMakeVisible (mPrevButton);
+    addAndMakeVisible (mNextButton);
+    addAndMakeVisible (mSaveButton);
+    addAndMakeVisible (mSetFolderButton);
+    addAndMakeVisible (mPresetLabel);
+
+    mPrevButton.onClick = [this]
+    {
+        audioProcessor.getPresetManager().loadPreviousPreset();
+        refreshPresetUi();
+    };
+
+    mNextButton.onClick = [this]
+    {
+        audioProcessor.getPresetManager().loadNextPreset();
+        refreshPresetUi();
+    };
+
+    mSaveButton.onClick = [this] { promptSavePreset(); };
+    mSetFolderButton.onClick = [this] { promptSetPresetFolder(); };
+
     refreshKnobReadouts();
+    refreshPresetUi();
     updatePanelLayout();
-    panelBackground.ensureCachesBuilt (getWidth(), panelLayout.controlPanel.getHeight());
+    panelBackground.ensureCachesBuilt (getWidth(), kHeaderChromeHeight + kControlPanelHeight);
     startTimerHz (60);
 }
 
@@ -373,6 +417,98 @@ void HydraAudioProcessorEditor::updateEnvelopeTabBindings()
     releaseAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, "filterRelease", releaseSlider);
 
     refreshKnobReadouts();
+}
+
+void HydraAudioProcessorEditor::refreshPresetUi()
+{
+    auto& pm = audioProcessor.getPresetManager();
+    pm.updatePresetList();
+
+    const bool hasPresets = ! pm.getPresetNames().isEmpty();
+    mPrevButton.setEnabled (hasPresets);
+    mNextButton.setEnabled (hasPresets);
+
+    const auto labelHeight = mPresetLabel.getHeight();
+    const auto labelPointSize = labelHeight > 0 ? juce::jmax (13.0f, static_cast<float> (labelHeight) * 0.46f) : 15.0f;
+    mPresetLabel.setFont (juce::Font (juce::FontOptions { labelPointSize, juce::Font::bold }));
+    mPresetLabel.setText (pm.getCurrentPresetName(), juce::dontSendNotification);
+}
+
+void HydraAudioProcessorEditor::layoutPresetHeader (juce::Rectangle<int> headerArea)
+{
+    auto row = headerArea.reduced (kHeaderZoneInnerPad, 4);
+    const auto actionY = row.getY() + ((row.getHeight() - kPresetNavButtonHeight) / 2);
+    const auto navY = actionY;
+
+    auto actionCluster = row.removeFromRight (kPresetActionButtonWidth + kPresetBarHorizontalGap + kPresetFolderButtonWidth);
+    mSetFolderButton.setBounds (actionCluster.removeFromRight (kPresetFolderButtonWidth)
+                                    .withY (actionY)
+                                    .withHeight (kPresetNavButtonHeight));
+    actionCluster.removeFromRight (kPresetBarHorizontalGap);
+    mSaveButton.setBounds (actionCluster.removeFromRight (kPresetActionButtonWidth)
+                               .withY (actionY)
+                               .withHeight (kPresetNavButtonHeight));
+
+    const auto xyPadLeft = (getWidth() - kXyPadSize) / 2;
+    const auto xyPadRight = xyPadLeft + kXyPadSize;
+
+    mPrevButton.setBounds (xyPadLeft, navY, kPresetNavButtonWidth, kPresetNavButtonHeight);
+    mNextButton.setBounds (xyPadRight - kPresetNavButtonWidth, navY, kPresetNavButtonWidth, kPresetNavButtonHeight);
+
+    const auto labelLeft = mPrevButton.getRight() + kPresetNavInnerGap;
+    const auto labelRight = mNextButton.getX() - kPresetNavInnerGap;
+    mPresetLabel.setBounds (labelLeft, row.getY(), juce::jmax (0, labelRight - labelLeft), row.getHeight());
+}
+
+void HydraAudioProcessorEditor::promptSavePreset()
+{
+    auto& pm = audioProcessor.getPresetManager();
+    const auto currentName = pm.getCurrentPresetName().isEmpty() ? "New Preset" : pm.getCurrentPresetName();
+
+    mPresetSaveChooser = std::make_unique<juce::FileChooser> (
+        "Save The Hydra Preset",
+        pm.getCurrentPresetDirectory().getChildFile (currentName).withFileExtension (".hydra"),
+        "*.hydra");
+
+    const auto flags = juce::FileBrowserComponent::saveMode
+                     | juce::FileBrowserComponent::canSelectFiles
+                     | juce::FileBrowserComponent::warnAboutOverwriting;
+
+    mPresetSaveChooser->launchAsync (flags, [this] (const juce::FileChooser& chooser)
+    {
+        const juce::File target = chooser.getResult();
+        if (target != juce::File{})
+        {
+            audioProcessor.getPresetManager().savePreset (target.getFileNameWithoutExtension());
+            refreshPresetUi();
+        }
+
+        mPresetSaveChooser.reset();
+    });
+}
+
+void HydraAudioProcessorEditor::promptSetPresetFolder()
+{
+    auto& pm = audioProcessor.getPresetManager();
+
+    mPresetFolderChooser = std::make_unique<juce::FileChooser> (
+        "Select Preset Folder",
+        pm.getCurrentPresetDirectory());
+
+    const auto flags = juce::FileBrowserComponent::openMode
+                     | juce::FileBrowserComponent::canSelectDirectories;
+
+    mPresetFolderChooser->launchAsync (flags, [this] (const juce::FileChooser& chooser)
+    {
+        const juce::File target = chooser.getResult();
+        if (target != juce::File{})
+        {
+            audioProcessor.getPresetManager().setCustomPresetDirectory (target);
+            refreshPresetUi();
+        }
+
+        mPresetFolderChooser.reset();
+    });
 }
 
 void HydraAudioProcessorEditor::refreshKnobReadouts()
@@ -474,31 +610,57 @@ void HydraAudioProcessorEditor::timerCallback()
 
 void HydraAudioProcessorEditor::updatePanelLayout()
 {
-    auto controlPanel = getLocalBounds();
+    auto layoutBounds = getLocalBounds();
 
     panelLayout.keyboardStrip = {};
+    panelLayout.headerZone = {};
+    panelLayout.backgroundPanel = {};
 
-    if (keyboardComponent.isVisible())
-        panelLayout.keyboardStrip = controlPanel.removeFromBottom (kKeyboardStripHeight);
+    if (usesKeyboardStrip)
+        panelLayout.keyboardStrip = layoutBounds.removeFromBottom (kCompactKeyboardHeight);
 
-    panelLayout.controlPanel = controlPanel;
+    panelLayout.backgroundPanel = layoutBounds;
 
-    const auto originY = controlPanel.getY();
+    layoutBounds.removeFromTop (kZoneGap);
+    const auto headerStrip = layoutBounds.removeFromTop (kHeaderHeight);
+    panelLayout.headerZone = juce::Rectangle<int> (kPanelHorizontalMargin,
+                                                   headerStrip.getY(),
+                                                   headerStrip.getWidth() - (2 * kPanelHorizontalMargin),
+                                                   headerStrip.getHeight());
+
+    layoutBounds.removeFromTop (kZoneGap);
+    panelLayout.controlPanel = layoutBounds;
+
+    const auto originY = panelLayout.controlPanel.getY();
 
     panelLayout.harmonicZone = juce::Rectangle<int> (kPanelHorizontalMargin,
                                                      originY + kHarmonicZone1Top,
-                                                     controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
+                                                     panelLayout.controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
                                                      kHarmonicZoneHeight);
 
     panelLayout.modulationZone = juce::Rectangle<int> (kPanelHorizontalMargin,
                                                        originY + kModulationZoneTop,
-                                                       controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
+                                                       panelLayout.controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
                                                        kModulationZoneHeight);
 
+    panelLayout.footerBounds = juce::Rectangle<int> (kPanelHorizontalMargin,
+                                                     panelLayout.controlPanel.getBottom() - kFooterTextBottomPadding - kFooterBrandHeight,
+                                                     panelLayout.controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
+                                                     kFooterBrandHeight);
+
+    const auto envelopeTop = originY + kEnvelopeZoneTop;
+    auto envelopeHeight = kEnvelopeSectionHeight;
+
+    if (! usesKeyboardStrip)
+    {
+        const auto envelopeBottom = panelLayout.footerBounds.getY() - kFooterZoneGap;
+        envelopeHeight = juce::jmax (kEnvelopeSectionHeight, envelopeBottom - envelopeTop);
+    }
+
     panelLayout.envelopeZone = juce::Rectangle<int> (kPanelHorizontalMargin,
-                                                     originY + kEnvelopeZoneTop,
-                                                     controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
-                                                     kEnvelopeSectionHeight);
+                                                     envelopeTop,
+                                                     panelLayout.controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
+                                                     envelopeHeight);
 
     const auto harmonicStackTop = panelLayout.harmonicZone.getY() + kHarmonicZoneInnerPad;
     const auto xyPadX = (getWidth() - kXyPadSize) / 2;
@@ -506,11 +668,6 @@ void HydraAudioProcessorEditor::updatePanelLayout()
                                                     harmonicStackTop + kXyPadInset,
                                                     kXyPadSize - (2 * kXyPadInset),
                                                     kHarmonicSideStackHeight - (2 * kXyPadInset));
-
-    panelLayout.footerBounds = juce::Rectangle<int> (kPanelHorizontalMargin,
-                                                     controlPanel.getBottom() - kFooterTextBottomPadding - kFooterBrandHeight,
-                                                     controlPanel.getWidth() - (2 * kPanelHorizontalMargin),
-                                                     kFooterBrandHeight);
 }
 
 void HydraAudioProcessorEditor::paint (juce::Graphics& g)
@@ -535,24 +692,15 @@ void HydraAudioProcessorEditor::paint (juce::Graphics& g)
 
 void HydraAudioProcessorEditor::resized()
 {
-    auto bounds = getLocalBounds();
+    updatePanelLayout();
 
-    if (keyboardComponent.isVisible())
-    {
-        keyboardComponent.setBounds (bounds.getX(),
-                                     bounds.getBottom() - kKeyboardStripHeight - kKeyboardLift,
-                                     bounds.getWidth(),
-                                     kKeyboardStripHeight);
-        bounds.removeFromBottom (kKeyboardStripHeight - kKeyboardLift);
-    }
+    if (usesKeyboardStrip && ! panelLayout.keyboardStrip.isEmpty())
+        keyboardComponent.setBounds (panelLayout.keyboardStrip);
 
-    const auto controlPanel = bounds;
+    const auto& controlPanel = panelLayout.controlPanel;
     const auto controlPanelOriginY = controlPanel.getY();
 
-    const auto harmonicZone = juce::Rectangle<int> (controlPanel.getX(),
-                                                    controlPanelOriginY + kHarmonicZone1Top,
-                                                    controlPanel.getWidth(),
-                                                    kHarmonicZoneHeight);
+    const auto& harmonicZone = panelLayout.harmonicZone;
     const auto harmonicStackTop = harmonicZone.getY() + kHarmonicZoneInnerPad;
     const auto xyPadX = (getWidth() - kXyPadSize) / 2;
     const auto sideGap = 10;
@@ -698,10 +846,7 @@ void HydraAudioProcessorEditor::resized()
 
     const auto adsrClusterWidth = modulationColumnWidth * 4;
 
-    auto envelopeArea = juce::Rectangle<int> (kPanelHorizontalMargin,
-                                              controlPanelOriginY + kEnvelopeZoneTop,
-                                              modulationInnerWidth,
-                                              kEnvelopeSectionHeight);
+    auto envelopeArea = panelLayout.envelopeZone;
 
     envelopeArea.removeFromTop (kEnvelopeZoneTopPad);
 
@@ -733,6 +878,13 @@ void HydraAudioProcessorEditor::resized()
     placeEnvelopeDial (adsrRow, modulationColumnWidth, sustainSlider, sustainLabel);
     placeEnvelopeDial (adsrRow, modulationColumnWidth, releaseSlider, releaseLabel);
 
-    updatePanelLayout();
-    panelBackground.ensureCachesBuilt (getWidth(), panelLayout.controlPanel.getHeight());
+    mPrevButton.toFront (false);
+    mNextButton.toFront (false);
+    mSaveButton.toFront (false);
+    mSetFolderButton.toFront (false);
+    mPresetLabel.toFront (false);
+
+    layoutPresetHeader (panelLayout.headerZone.reduced (kHeaderZoneInnerPad, 0));
+    refreshPresetUi();
+    panelBackground.ensureCachesBuilt (getWidth(), panelLayout.backgroundPanel.getHeight());
 }

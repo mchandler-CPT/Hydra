@@ -3,7 +3,7 @@
 AppId={{C9B3D1A5-3F7A-4E9B-9C0D-8B1A2F3E4D5C}
 AppName=The Hydra
 AppVersion=1.0.0-beta
-AppPublisher=Mark Chandler / Ant
+AppPublisher=Mark Chandler / Hydra
 PrivilegesRequired=admin
 ; 64-bit hosts must install VST3 under native Common Files (not WOW64 Program Files (x86)).
 ArchitecturesAllowed=x64compatible
@@ -16,7 +16,7 @@ DisableDirPage=yes
 DisableProgramGroupPage=yes
 Compression=zip
 SolidCompression=no
-VersionInfoCompany=Mark Chandler / Ant
+VersionInfoCompany=Mark Chandler / Hydra
 VersionInfoDescription=The Hydra Synthesizer Installer
 VersionInfoVersion=1.0.0.0
 WizardStyle=modern

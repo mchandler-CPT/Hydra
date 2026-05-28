@@ -85,6 +85,8 @@ juce_generate_juce_header(Hydra)
 target_sources(Hydra PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginProcessor.h
+    Source/PresetManager.cpp
+    Source/PresetManager.h
     Source/PluginEditor.cpp
     Source/PluginEditor.h
     Source/UI/HydraPalette.h
@@ -94,6 +96,8 @@ target_sources(Hydra PRIVATE
     Source/UI/ProceduralDarkLookAndFeel.cpp
     Source/UI/SnapToggleButton.h
     Source/UI/SnapToggleButton.cpp
+    Source/UI/ChromeTextButton.h
+    Source/UI/ChromeTextButton.cpp
     Source/UI/XyExplorer.h
     Source/UI/XyExplorer.cpp
     

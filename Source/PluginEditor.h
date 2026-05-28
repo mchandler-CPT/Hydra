@@ -3,6 +3,7 @@
 #include "ProceduralDarkLookAndFeel.h"
 #include "PluginProcessor.h"
 #include "UI/HydraPanelBackground.h"
+#include "UI/ChromeTextButton.h"
 #include "UI/SnapToggleButton.h"
 #include "UI/XyExplorer.h"
 
@@ -56,10 +57,15 @@ private:
     void updateHarmonicInversionDisplayLabels();
     void snapHarmonyParameterToNearestStep();
     void refreshKnobReadouts();
+    void refreshPresetUi();
+    void promptSavePreset();
+    void promptSetPresetFolder();
+    void layoutPresetHeader (juce::Rectangle<int> headerArea);
     void updatePanelLayout();
     void timerCallback() override;
 
     HydraAudioProcessor& audioProcessor;
+    const bool usesKeyboardStrip;
     ProceduralDarkLookAndFeel customLookAndFeel;
     HydraPanelBackground panelBackground;
     HydraPanelBackgroundLayout panelLayout;
@@ -128,6 +134,15 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> overloadAttachment;
 
     juce::MidiKeyboardComponent keyboardComponent;
+
+    ChromeTextButton mPrevButton;
+    ChromeTextButton mNextButton;
+    ChromeTextButton mSaveButton;
+    ChromeTextButton mSetFolderButton;
+    juce::Label mPresetLabel;
+
+    std::unique_ptr<juce::FileChooser> mPresetSaveChooser;
+    std::unique_ptr<juce::FileChooser> mPresetFolderChooser;
 
     bool isUpdatingHarmonySnap = false;
 

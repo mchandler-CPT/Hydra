@@ -123,7 +123,7 @@ void HydraPanelBackground::paint (juce::Graphics& g,
                                   float girthNorm,
                                   float audioPeak) const
 {
-    const auto panel = layout.controlPanel.toFloat();
+    const auto panel = layout.backgroundPanel.toFloat();
     if (panel.isEmpty())
         return;
 
@@ -151,14 +151,14 @@ void HydraPanelBackground::paint (juce::Graphics& g,
     g.fillRect (panel);
 
     if (watermarkImage.isValid())
-        g.drawImageAt (watermarkImage, layout.controlPanel.getX(), layout.controlPanel.getY());
+        g.drawImageAt (watermarkImage, layout.backgroundPanel.getX(), layout.backgroundPanel.getY());
 
     if (grainTile.isValid())
     {
         g.setOpacity (0.38f);
-        for (int y = layout.controlPanel.getY(); y < layout.controlPanel.getBottom(); y += kGrainTileSize)
+        for (int y = layout.backgroundPanel.getY(); y < layout.backgroundPanel.getBottom(); y += kGrainTileSize)
         {
-            for (int x = layout.controlPanel.getX(); x < layout.controlPanel.getRight(); x += kGrainTileSize)
+            for (int x = layout.backgroundPanel.getX(); x < layout.backgroundPanel.getRight(); x += kGrainTileSize)
                 g.drawImageAt (grainTile, x, y);
         }
 
@@ -204,6 +204,12 @@ void HydraPanelBackground::paint (juce::Graphics& g,
     const auto border = HydraPalette::colour (HydraPalette::borderMuted);
     const auto zoneAccent = HydraPalette::colour (HydraPalette::accentGold);
 
+    if (! layout.headerZone.isEmpty())
+        drawZoneCard (g,
+                      layout.headerZone.toFloat(),
+                      HydraPalette::colour (HydraPalette::accentGoldBright),
+                      raisedFill);
+
     drawZoneCard (g, layout.harmonicZone.toFloat(), zoneAccent, raisedFill);
     drawZoneCard (g,
                   layout.modulationZone.toFloat(),
@@ -229,9 +235,12 @@ void HydraPanelBackground::paint (juce::Graphics& g,
         g.fillRect (keyStrip.getX(), keyStrip.getY(), keyStrip.getWidth(), 2.0f);
     }
 
-    g.setColour (border.withAlpha (0.5f));
-    g.drawHorizontalLine (layout.controlPanel.getBottom(), static_cast<float> (layout.controlPanel.getX()),
-                          static_cast<float> (layout.controlPanel.getRight()));
+    if (! layout.keyboardStrip.isEmpty())
+    {
+        g.setColour (border.withAlpha (0.5f));
+        g.drawHorizontalLine (layout.controlPanel.getBottom(), static_cast<float> (layout.controlPanel.getX()),
+                              static_cast<float> (layout.controlPanel.getRight()));
+    }
 
     if (! layout.footerBounds.isEmpty())
     {

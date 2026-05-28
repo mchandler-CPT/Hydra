@@ -2,6 +2,7 @@
 
 #include "DSP/HydraEngine.h"
 #include "DSP/ZdfLadderFilter.h"
+#include "PresetManager.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
@@ -43,6 +44,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState& getApvts() { return apvts; }
+    PresetManager& getPresetManager() { return presetManager; }
     juce::MidiKeyboardState& getKeyboardState() { return keyboardState; }
 
     static constexpr int kFifoSize = 1024;
@@ -75,6 +77,7 @@ private:
     juce::dsp::StateVariableTPTFilter<float> mHpFilterR;
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     juce::AudioProcessorValueTreeState apvts;
+    PresetManager presetManager { apvts, "The Hydra", "dbEnergy", ".hydra" };
 
     std::atomic<float>* depthParam { nullptr };
     std::atomic<float>* girthParam { nullptr };

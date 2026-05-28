@@ -390,17 +390,28 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
 void HydraAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    const auto state = apvts.copyState();
-    const std::unique_ptr<juce::XmlElement> xml (state.createXml());
-    copyXmlToBinary (*xml, destData);
+    auto stateTree = apvts.copyState();
+    stateTree.setProperty ("metaLoadedPresetName", presetManager.getCurrentPresetName(), nullptr);
+
+    if (auto xml = stateTree.createXml())
+        copyXmlToBinary (*xml, destData);
 }
 
 void HydraAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    if (data == nullptr || sizeInBytes <= 0)
+        return;
+
     const std::unique_ptr<juce::XmlElement> xml (getXmlFromBinary (data, sizeInBytes));
 
     if (xml != nullptr && xml->hasTagName (apvts.state.getType()))
-        apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    {
+        const auto restoredTree = juce::ValueTree::fromXml (*xml);
+        apvts.replaceState (restoredTree);
+
+        if (restoredTree.hasProperty ("metaLoadedPresetName"))
+            presetManager.restorePresetNameFromSession (restoredTree.getProperty ("metaLoadedPresetName").toString());
+    }
 }
 
 void HydraAudioProcessor::setCurrentProgram (int) {}

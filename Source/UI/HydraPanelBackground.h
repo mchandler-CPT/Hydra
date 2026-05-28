@@ -6,6 +6,8 @@
 
 struct HydraPanelBackgroundLayout
 {
+    juce::Rectangle<int> backgroundPanel;
+    juce::Rectangle<int> headerZone;
     juce::Rectangle<int> controlPanel;
     juce::Rectangle<int> harmonicZone;
     juce::Rectangle<int> modulationZone;
