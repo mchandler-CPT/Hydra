@@ -87,6 +87,9 @@ target_sources(Hydra PRIVATE
     Source/PluginProcessor.h
     Source/PluginEditor.cpp
     Source/PluginEditor.h
+    Source/UI/HydraPalette.h
+    Source/UI/HydraPanelBackground.h
+    Source/UI/HydraPanelBackground.cpp
     Source/UI/ProceduralDarkLookAndFeel.h
     Source/UI/ProceduralDarkLookAndFeel.cpp
     Source/UI/SnapToggleButton.h

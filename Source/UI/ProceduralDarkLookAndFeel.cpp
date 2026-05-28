@@ -31,7 +31,7 @@ void ProceduralDarkLookAndFeel::drawRotarySlider (juce::Graphics& g,
     const auto arcStroke = juce::PathStrokeType (arcThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
 
     // Recessed seat behind the knob body.
-    g.setColour (juce::Colour (dialTrackColour).darker (0.35f));
+    g.setColour (HydraPalette::colour (HydraPalette::dialTrack).darker (0.35f));
     g.fillEllipse (centre.x - grooveRadius, centre.y - grooveRadius, grooveRadius * 2.0f, grooveRadius * 2.0f);
 
     juce::Path trackArc;
@@ -43,7 +43,7 @@ void ProceduralDarkLookAndFeel::drawRotarySlider (juce::Graphics& g,
                             rotaryStartAngle,
                             rotaryEndAngle,
                             true);
-    g.setColour (juce::Colour (dialTrackColour));
+    g.setColour (HydraPalette::colour (HydraPalette::dialTrack));
     g.strokePath (trackArc, arcStroke);
 
     juce::Path progressArc;
@@ -55,20 +55,20 @@ void ProceduralDarkLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                rotaryStartAngle,
                                angle,
                                true);
-    g.setColour (juce::Colour (dialFillColour));
+    g.setColour (HydraPalette::colour (HydraPalette::dialFill));
     g.strokePath (progressArc, arcStroke);
 
-    juce::ColourGradient bodyGradient (juce::Colour::fromString ("ff323232"),
+    juce::ColourGradient bodyGradient (HydraPalette::colour (HydraPalette::dialBodyTop),
                                        centre.x,
                                        centre.y - bodyRadius,
-                                       juce::Colour::fromString ("ff1a1a1a"),
+                                       HydraPalette::colour (HydraPalette::dialBodyBottom),
                                        centre.x,
                                        centre.y + bodyRadius,
                                        false);
     g.setGradientFill (bodyGradient);
     g.fillEllipse (centre.x - bodyRadius, centre.y - bodyRadius, bodyRadius * 2.0f, bodyRadius * 2.0f);
 
-    g.setColour (juce::Colour::fromString ("ff4a4a4a"));
+    g.setColour (HydraPalette::colour (HydraPalette::dialTrack).brighter (0.22f));
     g.drawEllipse (centre.x - bodyRadius + 1.0f,
                    centre.y - bodyRadius + 1.0f,
                    (bodyRadius * 2.0f) - 2.0f,
@@ -84,7 +84,7 @@ void ProceduralDarkLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                  pointerLength,
                                  pointerThickness * 0.5f);
 
-    g.setColour (juce::Colour (dialPointerColour));
+    g.setColour (HydraPalette::colour (HydraPalette::dialPointer));
     g.fillPath (pointer, juce::AffineTransform::rotation (angle).translated (centre.x, centre.y));
 }
 

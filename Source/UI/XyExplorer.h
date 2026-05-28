@@ -16,6 +16,8 @@ public:
 
     void setParameters (juce::RangedAudioParameter& depthParam, juce::RangedAudioParameter& girthParam);
 
+    float getSmoothedWaveformPeak() const noexcept { return waveformPeakSmoothed; }
+
     void paint (juce::Graphics& g) override;
     void resized() override;
     void mouseDown (const juce::MouseEvent& event) override;

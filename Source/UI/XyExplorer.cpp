@@ -1,5 +1,6 @@
 #include "XyExplorer.h"
 
+#include "HydraPalette.h"
 #include "PluginProcessor.h"
 
 #include <array>
@@ -7,13 +8,6 @@
 
 namespace
 {
-constexpr juce::uint32 kPanelFillTop = 0xff141210;
-constexpr juce::uint32 kPanelFillBottom = 0xff090807;
-constexpr juce::uint32 kBorderColour = 0xff3a3530;
-constexpr juce::uint32 kGridColour = 0x44c4a574;
-constexpr juce::uint32 kLabelColour = 0xff8a847c;
-constexpr juce::uint32 kThumbFill = 0xffc4a574;
-constexpr juce::uint32 kThumbAura = 0x88c4a574;
 constexpr int kScopeTraceSamples = 256;
 constexpr float kCornerRadius = 6.0f;
 } // namespace
@@ -100,9 +94,9 @@ void XyExplorer::paint (juce::Graphics& g)
     const auto thumbX = panelBounds.getX() + normalizedX * panelBounds.getWidth();
     const auto thumbY = panelBounds.getY() + (1.0f - normalizedY) * panelBounds.getHeight();
 
-    juce::ColourGradient panelGradient (juce::Colour (kPanelFillTop),
+    juce::ColourGradient panelGradient (HydraPalette::colour (HydraPalette::xyPanelTop),
                                         panelBounds.getTopLeft(),
-                                        juce::Colour (kPanelFillBottom),
+                                        HydraPalette::colour (HydraPalette::xyPanelBottom),
                                         panelBounds.getBottomLeft(),
                                         false);
     g.setGradientFill (panelGradient);
@@ -136,7 +130,7 @@ void XyExplorer::paint (juce::Graphics& g)
 
     waveformPeakSmoothed = waveformPeakSmoothed * 0.82f + peak * 0.18f;
     const auto peakNorm = juce::jlimit (0.0f, 1.0f, waveformPeakSmoothed * 2.2f);
-    const auto accent = juce::Colour (kThumbFill);
+    const auto accent = HydraPalette::macroAccent (normalizedX, normalizedY);
 
     juce::Path waveFill = wavePath;
     waveFill.lineTo (lastX, midY);
@@ -165,7 +159,7 @@ void XyExplorer::paint (juce::Graphics& g)
     const auto centreY = panelBounds.getCentreY();
     const float dashPattern[] { 4.0f, 4.0f };
 
-    g.setColour (juce::Colour (kGridColour));
+    g.setColour (accent.withAlpha (0.35f));
     g.drawDashedLine ({ panelBounds.getX(), centreY, panelBounds.getRight(), centreY },
                       dashPattern,
                       2,
@@ -175,10 +169,13 @@ void XyExplorer::paint (juce::Graphics& g)
                       2,
                       1.0f);
 
-    g.setColour (juce::Colour (kBorderColour));
-    g.drawRoundedRectangle (panelBounds, kCornerRadius, 1.0f);
+    g.setColour (HydraPalette::colour (HydraPalette::borderMuted));
+    g.drawRoundedRectangle (panelBounds, kCornerRadius, 1.25f);
 
-    g.setColour (juce::Colour (kLabelColour));
+    g.setColour (accent.withAlpha (0.65f));
+    g.drawRoundedRectangle (panelBounds.expanded (0.75f), kCornerRadius + 0.75f, 0.85f);
+
+    g.setColour (HydraPalette::colour (HydraPalette::textLabel));
     g.setFont (juce::Font (juce::FontOptions { 9.0f }));
 
     auto labelBounds = panelBounds;
@@ -207,9 +204,9 @@ void XyExplorer::paint (juce::Graphics& g)
                    thumbGlowRadius * 2.0f,
                    thumbGlowRadius * 2.0f);
 
-    g.setColour (juce::Colour (kThumbAura));
+    g.setColour (accent.withAlpha (0.55f));
     g.drawEllipse (thumbX - 10.0f, thumbY - 10.0f, 20.0f, 20.0f, 1.5f);
 
-    g.setColour (juce::Colour (kThumbFill));
+    g.setColour (accent);
     g.fillEllipse (thumbX - 4.0f, thumbY - 4.0f, 8.0f, 8.0f);
 }

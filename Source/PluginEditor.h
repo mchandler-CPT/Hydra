@@ -2,6 +2,7 @@
 
 #include "ProceduralDarkLookAndFeel.h"
 #include "PluginProcessor.h"
+#include "UI/HydraPanelBackground.h"
 #include "UI/SnapToggleButton.h"
 #include "UI/XyExplorer.h"
 
@@ -11,7 +12,8 @@
 
 #include <memory>
 
-class HydraAudioProcessorEditor : public juce::AudioProcessorEditor
+class HydraAudioProcessorEditor : public juce::AudioProcessorEditor,
+                                  private juce::Timer
 {
 public:
     explicit HydraAudioProcessorEditor (HydraAudioProcessor&);
@@ -54,9 +56,13 @@ private:
     void updateHarmonicInversionDisplayLabels();
     void snapHarmonyParameterToNearestStep();
     void refreshKnobReadouts();
+    void updatePanelLayout();
+    void timerCallback() override;
 
     HydraAudioProcessor& audioProcessor;
     ProceduralDarkLookAndFeel customLookAndFeel;
+    HydraPanelBackground panelBackground;
+    HydraPanelBackgroundLayout panelLayout;
 
     XyExplorer xyExplorer;
 

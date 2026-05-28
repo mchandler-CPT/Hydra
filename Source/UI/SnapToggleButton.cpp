@@ -17,9 +17,12 @@ void SnapToggleButton::paintButton (juce::Graphics& g,
         bounds = bounds.reduced (1.0f);
 
     const auto isOn = getToggleState();
-    const auto fillColour = isOn ? juce::Colour (snapOnFill) : juce::Colour (snapOffFill);
-    const auto borderColour = isOn ? juce::Colour (snapOnFill).brighter (0.12f) : juce::Colour (snapOffBorder);
-    const auto textColour = isOn ? juce::Colour (snapOnText) : juce::Colour (snapOffText);
+    const auto fillColour = isOn ? HydraPalette::colour (HydraPalette::snapOnFill)
+                                 : HydraPalette::colour (HydraPalette::snapOffFill);
+    const auto borderColour = isOn ? HydraPalette::colour (HydraPalette::snapOnFill).brighter (0.12f)
+                                   : HydraPalette::colour (HydraPalette::snapOffBorder);
+    const auto textColour = isOn ? HydraPalette::colour (HydraPalette::snapOnText)
+                                 : HydraPalette::colour (HydraPalette::snapOffText);
 
     g.setColour (fillColour);
     g.fillRoundedRectangle (bounds, 4.0f);
