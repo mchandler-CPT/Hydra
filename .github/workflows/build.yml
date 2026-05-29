@@ -51,16 +51,21 @@ jobs:
           fi
           APP_CERT_PATH="$RUNNER_TEMP/macos_app_cert.p12"
           INSTALL_CERT_PATH="$RUNNER_TEMP/macos_install_cert.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/build-signing.keychain-db"
+          KEYCHAIN_PATH="${HOME}/Library/Keychains/build.keychain-db"
           echo "${MACOS_APP_CERT}" | base64 --decode > "${APP_CERT_PATH}"
           echo "${MACOS_INSTALL_CERT}" | base64 --decode > "${INSTALL_CERT_PATH}"
+          security delete-keychain "${KEYCHAIN_PATH}" 2>/dev/null || true
           security create-keychain -p "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
-          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 7200 "${KEYCHAIN_PATH}"
           security unlock-keychain -p "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
           security list-keychains -d user -s "${KEYCHAIN_PATH}" login.keychain-db
-          security import "${APP_CERT_PATH}" -k "${KEYCHAIN_PATH}" -P "${MACOS_CERT_PWD}" -T /usr/bin/codesign -T /usr/bin/productsign
-          security import "${INSTALL_CERT_PATH}" -k "${KEYCHAIN_PATH}" -P "${MACOS_CERT_PWD}" -T /usr/bin/codesign -T /usr/bin/productsign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
+          security import "${APP_CERT_PATH}" -k "${KEYCHAIN_PATH}" -P "${MACOS_CERT_PWD}" \
+            -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/productbuild
+          security import "${INSTALL_CERT_PATH}" -k "${KEYCHAIN_PATH}" -P "${MACOS_CERT_PWD}" \
+            -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/productbuild
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productbuild: \
+            -s -k "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
+          echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "${GITHUB_ENV}"
 
       - name: Install Inno Setup (Windows)
         if: matrix.os == 'windows-latest'
@@ -128,12 +133,25 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
+          MACOS_CERT_PWD: ${{ secrets.MACOS_CERT_PWD }}
         run: |
           set -euo pipefail
           if [ -z "${APPLE_ID}" ] || [ -z "${APPLE_ID_PWD}" ] || [ -z "${TEAM_ID}" ]; then
             echo "Required notarization secrets are missing."
             exit 1
           fi
+          if [ -z "${MACOS_CERT_PWD}" ]; then
+            echo "MACOS_CERT_PWD secret is missing."
+            exit 1
+          fi
+
+          KEYCHAIN_PATH="${KEYCHAIN_PATH:-${HOME}/Library/Keychains/build.keychain-db}"
+          security list-keychains -d user -s "${KEYCHAIN_PATH}" login.keychain-db
+          security unlock-keychain -p "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 7200 "${KEYCHAIN_PATH}"
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productbuild: \
+            -s -k "${MACOS_CERT_PWD}" "${KEYCHAIN_PATH}"
+
           INSTALLER_IDENTITY="$(security find-identity -v -p basic | awk -F\" '/Developer ID Installer:/{print $2; exit}')"
           if [ -z "${INSTALLER_IDENTITY}" ]; then
             echo "Developer ID Installer identity not found."
