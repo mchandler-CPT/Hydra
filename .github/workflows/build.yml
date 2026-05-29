@@ -34,12 +34,7 @@ jobs:
 
       - name: Build plugin target
         shell: pwsh
-        run: |
-          cmake --build build --config Release --target Hydra_All
-          if ($LASTEXITCODE -ne 0) {
-            cmake --build build --config Release --target BoutiqueHydra_All
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+        run: cmake --build build --config Release --target Hydra_All
 
       - name: Import signing certificates (macOS)
         if: matrix.os == 'macos-latest'
@@ -79,7 +74,7 @@ jobs:
           $dist = 'installer_dist'
           $hydraVst3 = Join-Path $dist 'Hydra.vst3'
           New-Item -ItemType Directory -Path $dist -Force | Out-Null
-          $vst3Root = 'build/BoutiqueHydra_artefacts/Release/VST3'
+          $vst3Root = 'build/Hydra_artefacts/Release/VST3'
           $bundle = Get-ChildItem -LiteralPath $vst3Root -Directory -Filter '*.vst3' | Select-Object -First 1
           if (-not $bundle) { throw "No .vst3 bundle found under $vst3Root" }
           if (Test-Path -LiteralPath $hydraVst3) { Remove-Item -LiteralPath $hydraVst3 -Recurse -Force }
@@ -113,13 +108,13 @@ jobs:
             echo "Developer ID Application identity not found."
             exit 1
           fi
-          for vst3 in build/BoutiqueHydra_artefacts/Release/VST3/*.vst3; do
+          for vst3 in build/Hydra_artefacts/Release/VST3/*.vst3; do
             codesign --force --deep --timestamp --options runtime \
                      --entitlements Source/entitlements.plist \
                      --sign "${APP_IDENTITY}" "${vst3}"
             codesign --verify --deep --strict --verbose=2 "${vst3}"
           done
-          for component in build/BoutiqueHydra_artefacts/Release/AU/*.component; do
+          for component in build/Hydra_artefacts/Release/AU/*.component; do
             codesign --force --deep --timestamp --options runtime \
                      --entitlements Source/entitlements.plist \
                      --sign "${APP_IDENTITY}" "${component}"
@@ -151,8 +146,8 @@ jobs:
             VERSION="1.0.0"
           fi
 
-          VST3_COMPONENT="$(ls -d build/BoutiqueHydra_artefacts/Release/VST3/*.vst3 | head -n 1)"
-          AU_COMPONENT="$(ls -d build/BoutiqueHydra_artefacts/Release/AU/*.component | head -n 1)"
+          VST3_COMPONENT="$(ls -d build/Hydra_artefacts/Release/VST3/*.vst3 | head -n 1)"
+          AU_COMPONENT="$(ls -d build/Hydra_artefacts/Release/AU/*.component | head -n 1)"
 
           if [ -z "${VST3_COMPONENT}" ] || [ -z "${AU_COMPONENT}" ]; then
             echo "Expected VST3/AU build outputs were not found."
@@ -193,7 +188,7 @@ jobs:
           TARGET_DIR="/Library/Audio/Plug-Ins/Components"
           sudo rm -rf "$TARGET_DIR/Hydra.component"
           sudo mkdir -p "$TARGET_DIR"
-          sudo cp -R build/BoutiqueHydra_artefacts/Release/AU/Hydra.component "$TARGET_DIR/"
+          sudo cp -R build/Hydra_artefacts/Release/AU/Hydra.component "$TARGET_DIR/"
           sudo xattr -cr "$TARGET_DIR/Hydra.component"
 
           echo "--- Internal Plist Check ---"
