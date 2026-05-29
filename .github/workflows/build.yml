@@ -173,12 +173,16 @@ jobs:
 
           productbuild --distribution dist/Distribution.xml \
                        --package-path dist \
-                       dist/Hydra_Installer_unsigned.pkg
+                       --sign "${INSTALLER_IDENTITY}" \
+                       dist/Hydra_Installer_Signed.pkg
 
-          productbuild --distribution dist/Distribution.xml \
-                       --package-path dist \
-                       dist/Hydra_Installer_unsigned.pkg \
-                       dist/Hydra_Installer.pkg
+          xcrun notarytool submit dist/Hydra_Installer_Signed.pkg \
+            --apple-id "${APPLE_ID}" \
+            --password "${APPLE_ID_PWD}" \
+            --team-id "${TEAM_ID}" \
+            --wait
+
+          xcrun stapler staple dist/Hydra_Installer_Signed.pkg
 
       - name: Remote Plugin Validation (AU)
         if: matrix.os == 'macos-latest'
@@ -207,7 +211,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hydra-macos
-          path: dist/Hydra_Installer.pkg
+          path: dist/Hydra_Installer_Signed.pkg
           if-no-files-found: error
 
       - name: Upload Windows artifacts
@@ -237,5 +241,5 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            dist/Hydra_Installer.pkg
+            dist/Hydra_Installer_Signed.pkg
             dist/Hydra_Setup.exe
