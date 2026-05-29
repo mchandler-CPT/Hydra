@@ -9,7 +9,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-plugin:
@@ -244,20 +244,36 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build-plugin
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: hydra-*
           merge-multiple: true
-          path: dist
+          path: artifacts
+
+      - name: Prepare release asset paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          INSTALLER="$(find artifacts -type f -name 'Hydra_Installer_Signed.pkg' | head -n 1)"
+          SETUP="$(find artifacts -type f -name 'Hydra_Setup.exe' | head -n 1)"
+          if [ -z "${INSTALLER}" ] || [ -z "${SETUP}" ]; then
+            echo "Missing release assets. Downloaded files:"
+            find artifacts -type f
+            exit 1
+          fi
+          cp "${INSTALLER}" dist/Hydra_Installer_Signed.pkg
+          cp "${SETUP}" dist/Hydra_Setup.exe
+          ls -lah dist/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
             dist/Hydra_Installer_Signed.pkg
             dist/Hydra_Setup.exe
