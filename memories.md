@@ -27,3 +27,4 @@
 ## Known Rules & Constraints
 - Never allow a virtual method call or heap memory allocation on the audio thread loop.
 - Execute the test runner block inside `/tests` whenever modifications are written to `HydraEngine` or related DSP components.
+ 
