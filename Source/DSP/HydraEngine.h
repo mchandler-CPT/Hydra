@@ -21,24 +21,45 @@ struct HydraPartialVoice
 
     std::array<float, delayBufferSize> delayBuffer {};
     int writeIndex = 0;
-    int delayInSamples = 0;
+    int maxDelayInSamples = 0;
 
     void configureDelay (double oversampledSampleRate, int partialIndex) noexcept;
     void clearDelay() noexcept;
 
-    inline float processDelaySample (float inputSample) noexcept
+    inline void processDelaySampleStereo (float inputSample,
+                                          int delaySamplesL,
+                                          int delaySamplesR,
+                                          float& outputL,
+                                          float& outputR) noexcept
     {
-        if (delayInSamples <= 0)
-            return inputSample;
+        if (delaySamplesL <= 0 && delaySamplesR <= 0)
+        {
+            outputL = inputSample;
+            outputR = inputSample;
+            return;
+        }
 
         delayBuffer[static_cast<size_t> (writeIndex)] = inputSample;
 
-        const auto readIndex = (writeIndex - delayInSamples + delayBufferSize) & delayBufferMask;
-        const auto delayedOutput = delayBuffer[static_cast<size_t> (readIndex)];
+        if (delaySamplesL <= 0)
+            outputL = inputSample;
+        else
+        {
+            const auto readIndexL =
+                (writeIndex - delaySamplesL + delayBufferSize) & delayBufferMask;
+            outputL = delayBuffer[static_cast<size_t> (readIndexL)];
+        }
+
+        if (delaySamplesR <= 0)
+            outputR = inputSample;
+        else
+        {
+            const auto readIndexR =
+                (writeIndex - delaySamplesR + delayBufferSize) & delayBufferMask;
+            outputR = delayBuffer[static_cast<size_t> (readIndexR)];
+        }
 
         writeIndex = (writeIndex + 1) & delayBufferMask;
-
-        return delayedOutput;
     }
 };
 
@@ -72,6 +93,7 @@ public:
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
     void applyFilterOverload (float* leftChannel, float* rightChannel, int numSamples) const noexcept;
     const float* getFilterCutoffBuffer() const noexcept { return filterCutoffBuffer.empty() ? nullptr : filterCutoffBuffer.data(); }
+    const float* getFilterCutoffBufferR() const noexcept { return filterCutoffBufferR.empty() ? nullptr : filterCutoffBufferR.data(); }
 
     float getVoiceAmplitude() const noexcept { return lastEnvelopeGain; }
 
@@ -97,13 +119,22 @@ private:
     static constexpr std::array<float, numPartials> pitchDriftRatesHz {
         0.052f, 0.067f, 0.083f, 0.097f, 0.112f, 0.131f, 0.149f
     };
+    static constexpr float delayModulationRateHz = 0.05f;
+    static constexpr float delayMicroSwingMaxSamples = 5.0f;
+    static constexpr float delayModulationPi = 3.1415927f;
+    static constexpr float delayModulationTwoPi = 6.2831853f;
 
     double sampleRate = 44100.0;
+    float delayModulationPhase = 0.0f;
+    float delayModulationPhaseIncrement = 0.0f;
     float noteOnSafetySampleCount = 44.1f;
     float fundamentalFreq = 0.0f;
     std::array<float, numPartials> pitchDriftLfoPhase {};
     juce::LinearSmoothedValue<float> smoothedCutoffHz;
     juce::LinearSmoothedValue<float> smoothedFrequency;
+    juce::LinearSmoothedValue<float> smoothedDepth;
+    juce::LinearSmoothedValue<float> smoothedGirth;
+    float maxSafeCutoffHz = 21000.0f;
     float depth = 0.0f;
     float girth = 0.0f;
     float harmony = 0.0f;
@@ -134,6 +165,7 @@ private:
     juce::ADSR adsr;
     juce::ADSR filterAdsr;
     std::vector<float> filterCutoffBuffer;
+    std::vector<float> filterCutoffBufferR;
 
     std::array<int, 16> noteStack {};
     int numNotesInStack = 0;

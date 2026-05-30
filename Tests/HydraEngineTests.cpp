@@ -217,7 +217,7 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     std::array<float, HydraParallelSaturator::numPartials> zeroLeft {};
     std::array<float, HydraParallelSaturator::numPartials> zeroRight {};
 
-    const auto silent = saturator.processSample (zeroLeft, zeroRight, 1.0f);
+    const auto silent = saturator.processSample (zeroLeft, zeroRight, 1.0f, 0.0f, 0.0f);
     REQUIRE (silent.first == Catch::Approx (0.0f).margin (1.0e-6f));
     REQUIRE (silent.second == Catch::Approx (0.0f).margin (1.0e-6f));
 
@@ -232,7 +232,7 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
 
     const auto midSumL = extremeLeft[2] + extremeLeft[3] + extremeLeft[4];
     const auto expectedMidL = std::tanh (midSumL * 1.4f);
-    const auto driven = saturator.processSample (extremeLeft, extremeRight, 1.0f);
+    const auto driven = saturator.processSample (extremeLeft, extremeRight, 1.0f, 0.0f, 0.0f);
 
     REQUIRE (driven.first == Catch::Approx (expectedMidL).margin (1.0e-5f));
     REQUIRE (driven.second == Catch::Approx (expectedMidL).margin (1.0e-5f));
@@ -244,7 +244,7 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     highOnlyLeft[5] = 2.0f;
     highOnlyLeft[6] = 2.0f;
 
-    const auto clipped = saturator.processSample (highOnlyLeft, highOnlyRight, 1.0f);
+    const auto clipped = saturator.processSample (highOnlyLeft, highOnlyRight, 1.0f, 0.0f, 0.0f);
     REQUIRE (clipped.first == Catch::Approx (0.7f).margin (1.0e-5f));
     REQUIRE (clipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
 
@@ -253,7 +253,7 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     highOnlyNegativeLeft[5] = -2.0f;
     highOnlyNegativeLeft[6] = -2.0f;
 
-    const auto negativeClipped = saturator.processSample (highOnlyNegativeLeft, highOnlyNegativeRight, 1.0f);
+    const auto negativeClipped = saturator.processSample (highOnlyNegativeLeft, highOnlyNegativeRight, 1.0f, 0.0f, 0.0f);
     REQUIRE (negativeClipped.first == Catch::Approx (-0.58f).margin (1.0e-5f));
     REQUIRE (negativeClipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
 
@@ -266,8 +266,10 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
         positiveDrive.fill (kDrive);
         negativeDrive.fill (-kDrive);
 
-        const auto posOutput = saturator.processSample (positiveDrive, zeroRight, 1.0f);
-        const auto negOutput = saturator.processSample (negativeDrive, zeroRight, 1.0f);
+        saturator.reset();
+        const auto posOutput = saturator.processSample (positiveDrive, zeroRight, 1.0f, 0.0f, 0.0f);
+        saturator.reset();
+        const auto negOutput = saturator.processSample (negativeDrive, zeroRight, 1.0f, 0.0f, 0.0f);
 
         REQUIRE (posOutput.first != -negOutput.first);
     }
@@ -388,24 +390,30 @@ TEST_CASE ("HydraEngine Temporal Staggering Verification", "[HydraEngine]")
     fundamentalVoice.configureDelay (kSampleRate, 0);
     highestPartialVoice.configureDelay (kSampleRate, 6);
 
-    REQUIRE (fundamentalVoice.delayInSamples == 0);
+    REQUIRE (fundamentalVoice.maxDelayInSamples == 0);
 
     const auto expectedHighestDelay = static_cast<int> (0.0145f * static_cast<float> (kSampleRate));
-    REQUIRE (highestPartialVoice.delayInSamples == expectedHighestDelay);
-    REQUIRE (highestPartialVoice.delayInSamples > 0);
-
-    REQUIRE (fundamentalVoice.processDelaySample (1.0f) == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (highestPartialVoice.maxDelayInSamples == expectedHighestDelay);
+    REQUIRE (highestPartialVoice.maxDelayInSamples > 0);
 
     HydraPartialVoice delayLine;
     delayLine.configureDelay (kSampleRate, 0);
-    delayLine.delayInSamples = 4;
+    delayLine.maxDelayInSamples = 4;
     delayLine.clearDelay();
 
-    delayLine.processDelaySample (1.0f);
-    delayLine.processDelaySample (2.0f);
-    delayLine.processDelaySample (3.0f);
-    delayLine.processDelaySample (4.0f);
-    REQUIRE (delayLine.processDelaySample (5.0f) == Catch::Approx (1.0f).margin (1.0e-6f));
+    float passthroughL = 0.0f;
+    float passthroughR = 0.0f;
+    delayLine.processDelaySampleStereo (1.0f, 0, 0, passthroughL, passthroughR);
+    REQUIRE (passthroughL == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (passthroughR == Catch::Approx (1.0f).margin (1.0e-6f));
+
+    delayLine.processDelaySampleStereo (1.0f, 4, 4, passthroughL, passthroughR);
+    delayLine.processDelaySampleStereo (2.0f, 4, 4, passthroughL, passthroughR);
+    delayLine.processDelaySampleStereo (3.0f, 4, 4, passthroughL, passthroughR);
+    delayLine.processDelaySampleStereo (4.0f, 4, 4, passthroughL, passthroughR);
+    delayLine.processDelaySampleStereo (5.0f, 4, 4, passthroughL, passthroughR);
+    REQUIRE (passthroughL == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (passthroughR == Catch::Approx (1.0f).margin (1.0e-6f));
 }
 
 TEST_CASE ("HydraEngine A-note rendering stays finite", "[HydraEngine]")
