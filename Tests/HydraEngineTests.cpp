@@ -217,7 +217,7 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     std::array<float, HydraParallelSaturator::numPartials> zeroLeft {};
     std::array<float, HydraParallelSaturator::numPartials> zeroRight {};
 
-    const auto silent = saturator.processSample (zeroLeft, zeroRight);
+    const auto silent = saturator.processSample (zeroLeft, zeroRight, 1.0f);
     REQUIRE (silent.first == Catch::Approx (0.0f).margin (1.0e-6f));
     REQUIRE (silent.second == Catch::Approx (0.0f).margin (1.0e-6f));
 
@@ -232,7 +232,7 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
 
     const auto midSumL = extremeLeft[2] + extremeLeft[3] + extremeLeft[4];
     const auto expectedMidL = std::tanh (midSumL * 1.4f);
-    const auto driven = saturator.processSample (extremeLeft, extremeRight);
+    const auto driven = saturator.processSample (extremeLeft, extremeRight, 1.0f);
 
     REQUIRE (driven.first == Catch::Approx (expectedMidL).margin (1.0e-5f));
     REQUIRE (driven.second == Catch::Approx (expectedMidL).margin (1.0e-5f));
@@ -244,7 +244,7 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     highOnlyLeft[5] = 2.0f;
     highOnlyLeft[6] = 2.0f;
 
-    const auto clipped = saturator.processSample (highOnlyLeft, highOnlyRight);
+    const auto clipped = saturator.processSample (highOnlyLeft, highOnlyRight, 1.0f);
     REQUIRE (clipped.first == Catch::Approx (0.7f).margin (1.0e-5f));
     REQUIRE (clipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
 
@@ -253,7 +253,7 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     highOnlyNegativeLeft[5] = -2.0f;
     highOnlyNegativeLeft[6] = -2.0f;
 
-    const auto negativeClipped = saturator.processSample (highOnlyNegativeLeft, highOnlyNegativeRight);
+    const auto negativeClipped = saturator.processSample (highOnlyNegativeLeft, highOnlyNegativeRight, 1.0f);
     REQUIRE (negativeClipped.first == Catch::Approx (-0.58f).margin (1.0e-5f));
     REQUIRE (negativeClipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
 
@@ -266,8 +266,8 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
         positiveDrive.fill (kDrive);
         negativeDrive.fill (-kDrive);
 
-        const auto posOutput = saturator.processSample (positiveDrive, zeroRight);
-        const auto negOutput = saturator.processSample (negativeDrive, zeroRight);
+        const auto posOutput = saturator.processSample (positiveDrive, zeroRight, 1.0f);
+        const auto negOutput = saturator.processSample (negativeDrive, zeroRight, 1.0f);
 
         REQUIRE (posOutput.first != -negOutput.first);
     }

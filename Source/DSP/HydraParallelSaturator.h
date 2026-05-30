@@ -9,10 +9,11 @@ public:
     static constexpr int numPartials = 7;
 
     std::pair<float, float> processSample (const std::array<float, numPartials>& partialSamplesLeft,
-                                           const std::array<float, numPartials>& partialSamplesRight) noexcept;
+                                           const std::array<float, numPartials>& partialSamplesRight,
+                                           float velocity) noexcept;
 
 private:
-    static float processLowBand (float x) noexcept;
-    static float processMidBand (float x) noexcept;
-    static float processHighBand (float x) noexcept;
+    static float processLowBand (float x, float velocity) noexcept;
+    static float processMidBand (float x, float velocity) noexcept;
+    static float processHighBand (float x, float velocity) noexcept;
 };
