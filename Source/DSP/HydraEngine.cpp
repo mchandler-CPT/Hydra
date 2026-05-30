@@ -86,6 +86,9 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
     smoothedCutoffHz.reset (sampleRate, smoothingSeconds);
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
 
+    smoothedVelocity.reset (sampleRate, 0.015);
+    smoothedVelocity.setCurrentAndTargetValue (0.0f);
+
     appliedGlideTimeSeconds = juce::jmax (0.003f, glideTimeSeconds);
     smoothedFrequency.reset (sampleRate, static_cast<double> (appliedGlideTimeSeconds));
     smoothedFrequency.setCurrentAndTargetValue (0.0f);
@@ -131,7 +134,7 @@ void HydraEngine::reset() noexcept
     numNotesInStack = 0;
     noteStack.fill (0);
     isKeyHeld = false;
-    noteVelocity = 0.0f;
+    smoothedVelocity.setCurrentAndTargetValue (0.0f);
     lastEnvelopeGain = 0.0f;
     fundamentalFreq = 0.0f;
     samplesSinceNoteOn = 0;
@@ -234,12 +237,11 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     }
 
     const auto clampedVelocity = juce::jlimit (0.0f, 1.0f, velocity);
-    const auto isNoteAlreadyPlaying = adsr.isActive();
+    const auto isVoiceGenuinelySilent = ! adsr.isActive();
     const auto activeNote = noteStack[static_cast<size_t> (numNotesInStack - 1)];
     activeMidiNoteNumber = activeNote;
     const auto targetFreq = midiNoteToFrequency (activeNote);
 
-    noteVelocity = clampedVelocity;
     isKeyHeld = true;
     noteIsActive = true;
     fundamentalFreq = targetFreq;
@@ -247,9 +249,10 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     adsr.noteOn();
     filterAdsr.noteOn();
 
-    if (! isNoteAlreadyPlaying)
+    if (isVoiceGenuinelySilent)
     {
         samplesSinceNoteOn = 0;
+        smoothedVelocity.setCurrentAndTargetValue (clampedVelocity);
         smoothedFrequency.setCurrentAndTargetValue (targetFreq);
 
         for (auto& oscillator : oscillators)
@@ -257,6 +260,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
     }
     else
     {
+        smoothedVelocity.setTargetValue (clampedVelocity);
         smoothedFrequency.setTargetValue (targetFreq);
     }
 
@@ -503,7 +507,8 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         const auto envelopeGain = adsr.getNextSample();
         const auto filterEnvAmt = filterAdsr.getNextSample();
-        lastEnvelopeGain = envelopeGain * noteVelocity;
+        const auto currentVelocity = smoothedVelocity.getNextValue();
+        lastEnvelopeGain = envelopeGain * currentVelocity;
 
         if (! adsr.isActive())
         {
@@ -514,17 +519,16 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         }
 
         const auto baselineCutoff = smoothedCutoffHz.getNextValue();
-        const auto morphValue = scaleMorph;
-        const auto tuningDivisor = 12.0f + (morphValue * 12.0f);
-        const auto octavesFromAnchor =
-            (static_cast<float> (activeMidiNoteNumber) - 69.0f) / tuningDivisor;
+        const auto currentBaseFreq = smoothedFrequency.getNextValue();
+        const auto octavesFromAnchor = (currentBaseFreq > 0.0f)
+                                         ? std::log2 (currentBaseFreq / 440.0f)
+                                         : 0.0f;
         const auto trackedCutoffFloor =
             baselineCutoff * std::pow (2.0f, kbTrack * octavesFromAnchor);
         const auto dynamicCutoff =
             trackedCutoffFloor + (filterEnvAmt * egrAmount * 3500.0f);
         const auto cutoffHz = juce::jlimit (20.0f, 21000.0f, dynamicCutoff);
         filterCutoffBuffer[static_cast<size_t> (sampleIndex)] = cutoffHz;
-        const auto currentBaseFreq = smoothedFrequency.getNextValue();
 
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesLeft {};
         std::array<float, HydraParallelSaturator::numPartials> partialSamplesRight {};
@@ -632,7 +636,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
     if (! adsr.isActive())
     {
         noteIsActive = false;
-        noteVelocity = 0.0f;
+        smoothedVelocity.setCurrentAndTargetValue (0.0f);
         samplesSinceNoteOn = 0;
         smoothedFrequency.setCurrentAndTargetValue (0.0f);
         numNotesInStack = 0;

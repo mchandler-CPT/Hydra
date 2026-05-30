@@ -126,7 +126,7 @@ private:
     juce::ADSR::Parameters baseFilterEnvelopeParameters { 0.1f, 0.3f, 0.7f, 0.5f };
     std::array<float, numPartials> frequencyMultipliers { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
     std::array<float, numPartials> assignedHarmonicOrders { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f };
-    float noteVelocity = 0.0f;
+    juce::LinearSmoothedValue<float> smoothedVelocity;
     float lastEnvelopeGain = 0.0f;
     bool noteIsActive = false;
     int64_t samplesSinceNoteOn { 0 };
