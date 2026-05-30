@@ -89,11 +89,19 @@ private:
 
     static float computeHarmonicTiltGain (float harmonicMultiplier, float tilt) noexcept;
     static int harmonicInversionIndexFromParameter (float harmonicInversion) noexcept;
+    static float trianglePitchDriftMultiplier (float lfoPhase01) noexcept;
+    static void advancePitchDriftLfo (float& lfoPhase01, float rateHz, double sr) noexcept;
 
     static constexpr float spectralDampingS = 0.0008f;
+    static constexpr float maxPitchDriftCentsMultiplier = 0.001f;
+    static constexpr std::array<float, numPartials> pitchDriftRatesHz {
+        0.052f, 0.067f, 0.083f, 0.097f, 0.112f, 0.131f, 0.149f
+    };
 
     double sampleRate = 44100.0;
+    float noteOnSafetySampleCount = 44.1f;
     float fundamentalFreq = 0.0f;
+    std::array<float, numPartials> pitchDriftLfoPhase {};
     juce::LinearSmoothedValue<float> smoothedCutoffHz;
     juce::LinearSmoothedValue<float> smoothedFrequency;
     float depth = 0.0f;

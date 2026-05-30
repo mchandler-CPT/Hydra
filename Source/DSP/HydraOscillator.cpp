@@ -65,6 +65,13 @@ void HydraOscillator::setFrequency (double frequencyHz, bool glidePitch) noexcep
         phaseIncrement.setCurrentAndTargetValue (targetIncrement);
 }
 
+void HydraOscillator::noteOn() noexcept
+{
+    static constexpr double maxInitialPhaseRadians = 0.05 * twoPi;
+    currentPhase = static_cast<double> (juce::Random::getSystemRandom().nextFloat())
+                 * maxInitialPhaseRadians;
+}
+
 void HydraOscillator::setPhase (double initialPhase) noexcept
 {
     currentPhase = initialPhase;

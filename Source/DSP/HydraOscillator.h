@@ -24,6 +24,7 @@ public:
     static const SharedWavetables& getSharedTables();
 
     void prepare (double sampleRate) noexcept;
+    void noteOn() noexcept;
     void setFrequency (double frequencyHz, bool glidePitch) noexcept;
     void setPhase (double initialPhase) noexcept;
 
