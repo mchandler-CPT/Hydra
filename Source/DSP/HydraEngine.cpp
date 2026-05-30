@@ -613,7 +613,9 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             oscillator.advance();
         }
 
-        const auto saturated = saturator.processSample (partialSamplesLeft, partialSamplesRight);
+        const auto saturated = saturator.processSample (partialSamplesLeft,
+                                                        partialSamplesRight,
+                                                        currentVelocity);
 
         auto outputL = saturated.first * lastEnvelopeGain;
         auto outputR = saturated.second * lastEnvelopeGain;
