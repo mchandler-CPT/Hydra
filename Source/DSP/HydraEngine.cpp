@@ -108,6 +108,8 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
     smoothedDepth.setCurrentAndTargetValue (depth);
     smoothedGirth.reset (sampleRate, parameterSmoothingSeconds);
     smoothedGirth.setCurrentAndTargetValue (girth);
+    smoothedFilterOverload.reset (sampleRate, parameterSmoothingSeconds);
+    smoothedFilterOverload.setCurrentAndTargetValue (filterOverload);
     harmonicTiltSmoothed.reset (sampleRate, parameterSmoothingSeconds);
     harmonicInversionSmoothed.reset (sampleRate, parameterSmoothingSeconds);
     harmonicTiltSmoothed.setCurrentAndTargetValue (0.0f);
@@ -147,6 +149,10 @@ void HydraEngine::reset() noexcept
     fundamentalFreq = 0.0f;
     samplesSinceNoteOn = 0;
     delayModulationPhase = 0.0f;
+    lastFilterOutputL = 0.0;
+    lastFilterOutputR = 0.0;
+    filterL.reset();
+    filterR.reset();
 
     adsr.reset();
     filterAdsr.reset();
@@ -154,6 +160,7 @@ void HydraEngine::reset() noexcept
     filterCutoffBufferR.clear();
     smoothedDepth.setCurrentAndTargetValue (0.0f);
     smoothedGirth.setCurrentAndTargetValue (0.0f);
+    smoothedFilterOverload.setCurrentAndTargetValue (0.0f);
     saturator.reset();
 
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
@@ -410,6 +417,12 @@ void HydraEngine::setKbTrack (float newKbTrack) noexcept
 void HydraEngine::setFilterOverload (float newFilterOverload) noexcept
 {
     filterOverload = juce::jlimit (0.0f, 1.0f, newFilterOverload);
+    smoothedFilterOverload.setTargetValue (filterOverload);
+}
+
+void HydraEngine::setFilterResonance (float resonance) noexcept
+{
+    filterResonance = juce::jlimit (0.0f, 4.0f, resonance);
 }
 
 float HydraEngine::applyFilterOverloadSample (float sample, float overloadKnob) noexcept
@@ -491,6 +504,24 @@ void HydraEngine::setFilterCutoff (float cutoffHz) noexcept
     smoothedCutoffHz.setTargetValue (juce::jlimit (20.0f, 21000.0f, cutoffHz));
 }
 
+namespace
+{
+float westCoastWaveFolder (float input, float gain) noexcept
+{
+    auto x = input * gain;
+
+    while (x > 1.0f || x < -1.0f)
+    {
+        if (x > 1.0f)
+            x = 2.0f - x;
+        else if (x < -1.0f)
+            x = -2.0f - x;
+    }
+
+    return x;
+}
+} // namespace
+
 void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept
 {
     if (static_cast<int> (filterCutoffBuffer.size()) < numSamples)
@@ -502,6 +533,12 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
     updateFrequencyGlideSmoothing();
 
     applyMacroTargets();
+
+    const auto currentResonance = filterResonance;
+    auto cdcDepth = 0.0f;
+
+    if (currentResonance > 3.5f)
+        cdcDepth = juce::jlimit (0.0f, 1.0f, (currentResonance - 3.5f) / 0.5f);
 
     for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
     {
@@ -532,11 +569,14 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         {
             (void) smoothedDepth.getNextValue();
             (void) smoothedGirth.getNextValue();
+            (void) smoothedFilterOverload.getNextValue();
             const auto idleCutoff = smoothedCutoffHz.getCurrentValue();
             filterCutoffBuffer[static_cast<size_t> (sampleIndex)] = idleCutoff;
             filterCutoffBufferR[static_cast<size_t> (sampleIndex)] = idleCutoff;
             leftChannel[sampleIndex] = 0.0f;
             rightChannel[sampleIndex] = 0.0f;
+            lastFilterOutputL = 0.0;
+            lastFilterOutputR = 0.0;
             continue;
         }
 
@@ -598,6 +638,20 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
                                       ? std::sqrt (energyBeforeTilt / energyAfterTilt)
                                       : 1.0f;
 
+        const auto ov = juce::jlimit (0.0f, 1.0f, smoothedFilterOverload.getNextValue());
+        const auto foldingDrive = 1.0f + (std::pow (ov, 3.0f) * 2.5f);
+        const auto folderWetMix = std::pow (ov, 2.0f);
+        auto fmDepth = 0.0f;
+
+        if (ov > 0.9f)
+            fmDepth = juce::jlimit (0.0f, 0.3f, ((ov - 0.9f) / 0.1f) * 0.3f);
+
+        auto fmModulationOffset = 0.0;
+        const auto safeLastFilterL = std::isfinite (lastFilterOutputL) ? lastFilterOutputL : 0.0;
+        const auto safeLastFilterR = std::isfinite (lastFilterOutputR) ? lastFilterOutputR : 0.0;
+        const auto cdcOffsetL = safeLastFilterL * static_cast<double> (cdcDepth) * 0.45;
+        const auto cdcOffsetR = safeLastFilterR * static_cast<double> (cdcDepth) * 0.45;
+
         for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
         {
             const auto index = static_cast<size_t> (partialIndex);
@@ -643,10 +697,27 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
             const auto damping = (fn <= cutoffHz) ? 1.0f : std::exp (-(fn - cutoffHz) * spectralDampingS);
 
-            const auto oscillated = oscillator.evaluateSample (morph);
+            float oscillatedL = 0.0f;
+            float oscillatedR = 0.0f;
+
+            if (cdcDepth > 0.0f)
+            {
+                oscillatedL = oscillator.evaluateSample (morph, fmModulationOffset + cdcOffsetL);
+                oscillatedR = oscillator.evaluateSample (morph, fmModulationOffset + cdcOffsetR);
+            }
+            else
+            {
+                const auto oscillated = oscillator.evaluateSample (morph, fmModulationOffset);
+                oscillatedL = oscillated;
+                oscillatedR = oscillated;
+            }
+
+            const auto fmSource = 0.5f * (oscillatedL + oscillatedR);
+            fmModulationOffset = static_cast<double> (fmSource) * static_cast<double> (fmDepth)
+                               * juce::MathConstants<double>::twoPi * 2.0;
             const auto gain = amplitude * phaseIn * damping;
-            float delayedL = oscillated;
-            float delayedR = oscillated;
+            float delayedL = oscillatedL;
+            float delayedR = oscillatedR;
 
             if (currentGirth > 0.0f && voice.maxDelayInSamples > 0)
             {
@@ -658,7 +729,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
                 const auto effectiveDelayR = juce::jlimit (0,
                                                            HydraPartialVoice::delayBufferMask,
                                                            baseDelaySamples + delaySwingR);
-                voice.processDelaySampleStereo (oscillated,
+                voice.processDelaySampleStereo (oscillatedL,
                                                 effectiveDelayL,
                                                 effectiveDelayR,
                                                 delayedL,
@@ -669,6 +740,39 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             partialSamplesRight[index] = delayedR * gain * panR;
 
             oscillator.advance();
+        }
+
+        auto summedPartialL = 0.0f;
+        auto summedPartialR = 0.0f;
+
+        for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
+        {
+            const auto index = static_cast<size_t> (partialIndex);
+            summedPartialL += partialSamplesLeft[index];
+            summedPartialR += partialSamplesRight[index];
+        }
+
+        const auto dryPartialL = summedPartialL;
+        const auto dryPartialR = summedPartialR;
+        const auto wetPartialL = westCoastWaveFolder (summedPartialL, foldingDrive);
+        const auto wetPartialR = westCoastWaveFolder (summedPartialR, foldingDrive);
+        const auto blendedPartialL = dryPartialL + folderWetMix * (wetPartialL - dryPartialL);
+        const auto blendedPartialR = dryPartialR + folderWetMix * (wetPartialR - dryPartialR);
+
+        if (std::abs (summedPartialL) > 1.0e-12f)
+        {
+            const auto foldScaleL = blendedPartialL / summedPartialL;
+
+            for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
+                partialSamplesLeft[static_cast<size_t> (partialIndex)] *= foldScaleL;
+        }
+
+        if (std::abs (summedPartialR) > 1.0e-12f)
+        {
+            const auto foldScaleR = blendedPartialR / summedPartialR;
+
+            for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
+                partialSamplesRight[static_cast<size_t> (partialIndex)] *= foldScaleR;
         }
 
         const auto saturated = saturator.processSample (partialSamplesLeft,
@@ -687,8 +791,24 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
             outputR *= hardRamp;
         }
 
-        leftChannel[sampleIndex] = outputL;
-        rightChannel[sampleIndex] = outputR;
+        outputL = applyFilterOverloadSample (outputL, filterOverload);
+        outputR = applyFilterOverloadSample (outputR, filterOverload);
+
+        const auto warpedCutoffL = clampLowPassCutoffHz (cutoffL, sampleRate);
+        const auto warpedCutoffR = clampLowPassCutoffHz (cutoffR, sampleRate);
+        const auto filteredL = filterL.processSample (outputL,
+                                                      warpedCutoffL,
+                                                      currentResonance,
+                                                      sampleRate);
+        const auto filteredR = filterR.processSample (outputR,
+                                                      warpedCutoffR,
+                                                      currentResonance,
+                                                      sampleRate);
+
+        leftChannel[sampleIndex] = filteredL;
+        rightChannel[sampleIndex] = filteredR;
+        lastFilterOutputL = std::isfinite (filteredL) ? static_cast<double> (filteredL) : 0.0;
+        lastFilterOutputR = std::isfinite (filteredR) ? static_cast<double> (filteredR) : 0.0;
 
         ++samplesSinceNoteOn;
     }
@@ -714,6 +834,10 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         clearAllDelayLines();
         phaseDisperser.reset();
         saturator.reset();
+        filterL.reset();
+        filterR.reset();
+        lastFilterOutputL = 0.0;
+        lastFilterOutputR = 0.0;
         filterAdsr.reset();
     }
 }

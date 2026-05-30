@@ -29,7 +29,7 @@ public:
     void setPhase (double initialPhase) noexcept;
 
     void advance() noexcept;
-    float evaluateSample (float morphState) const noexcept;
+    float evaluateSample (float morphState, double phaseModulationOffset) const noexcept;
 
     double getCurrentPhase() const noexcept { return currentPhase; }
     double getPhaseIncrement() const noexcept { return phaseIncrement.getTargetValue(); }

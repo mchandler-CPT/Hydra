@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DSP/HydraEngine.h"
-#include "DSP/ZdfLadderFilter.h"
 #include "PresetManager.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -71,8 +70,6 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     HydraEngine hydraEngine;
-    ZdfLadderFilter filterL;
-    ZdfLadderFilter filterR;
     juce::dsp::StateVariableTPTFilter<float> mHpFilterL;
     juce::dsp::StateVariableTPTFilter<float> mHpFilterR;
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;

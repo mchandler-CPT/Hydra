@@ -88,18 +88,21 @@ void HydraOscillator::advance() noexcept
         currentPhase += twoPi;
 }
 
-float HydraOscillator::evaluateSample (float morphState) const noexcept
+float HydraOscillator::evaluateSample (float morphState, double phaseModulationOffset) const noexcept
 {
     const auto& tables = getSharedTables();
     const auto morph = juce::jlimit (kMorphMin, kMorphMax, morphState);
 
-    auto wrappedPhase = currentPhase;
-    while (wrappedPhase >= twoPi)
-        wrappedPhase -= twoPi;
-    while (wrappedPhase < 0.0)
-        wrappedPhase += twoPi;
+    // Cumulative phase injection (FM cascade, CDC feedback, etc.)
+    auto modulatedPhase = currentPhase + phaseModulationOffset;
 
-    const auto continuousIndex = static_cast<float> (wrappedPhase / twoPi)
+    while (modulatedPhase >= twoPi)
+        modulatedPhase -= twoPi;
+
+    while (modulatedPhase < 0.0)
+        modulatedPhase += twoPi;
+
+    const auto continuousIndex = static_cast<float> (modulatedPhase / twoPi)
                                * static_cast<float> (kWavetableSize);
     const auto clampedIndex = juce::jlimit (0.0f,
                                             static_cast<float> (kWavetableSize - 1),

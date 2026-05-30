@@ -4,6 +4,7 @@
 #include "HydraOscillator.h"
 #include "HydraParallelSaturator.h"
 #include "HydraPhaseDisperser.h"
+#include "ZdfLadderFilter.h"
 
 #include <juce_dsp/juce_dsp.h>
 #include <array>
@@ -89,6 +90,7 @@ public:
     void setHarmonicInversionIndexTarget (int harmonicInversionIndex) noexcept;
     void setKbTrack (float kbTrack) noexcept;
     void setFilterOverload (float filterOverload) noexcept;
+    void setFilterResonance (float resonance) noexcept;
 
     void renderBlock (float* leftChannel, float* rightChannel, int numSamples) noexcept;
     void applyFilterOverload (float* leftChannel, float* rightChannel, int numSamples) const noexcept;
@@ -134,6 +136,7 @@ private:
     juce::LinearSmoothedValue<float> smoothedFrequency;
     juce::LinearSmoothedValue<float> smoothedDepth;
     juce::LinearSmoothedValue<float> smoothedGirth;
+    juce::LinearSmoothedValue<float> smoothedFilterOverload;
     float maxSafeCutoffHz = 21000.0f;
     float depth = 0.0f;
     float girth = 0.0f;
@@ -149,6 +152,9 @@ private:
     juce::LinearSmoothedValue<float> harmonicInversionSmoothed;
     float kbTrack = 0.0f;
     float filterOverload = 0.0f;
+    float filterResonance = 1.0f;
+    double lastFilterOutputL = 0.0;
+    double lastFilterOutputR = 0.0;
     int activeMidiNoteNumber = 69;
 
     static float applyFilterOverloadSample (float sample, float overloadKnob) noexcept;
@@ -174,6 +180,8 @@ private:
     HydraMacroMapper macroMapper;
     HydraParallelSaturator saturator;
     HydraPhaseDisperser phaseDisperser;
+    ZdfLadderFilter filterL;
+    ZdfLadderFilter filterR;
     std::array<HydraOscillator, numPartials> oscillators {};
     std::array<HydraPartialVoice, numPartials> voices {};
 };

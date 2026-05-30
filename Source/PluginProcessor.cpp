@@ -208,8 +208,6 @@ void HydraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     hydraEngine.setHarmonicTiltTarget (harmonicTiltParam->load());
     hydraEngine.setHarmonicInversionIndexTarget (readHarmonicInversionIndex (apvts));
 
-    filterL.reset();
-    filterR.reset();
     monoRightScratch.resize (static_cast<size_t> (oversampledBlockSize));
 }
 
@@ -283,6 +281,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     }
 
     const auto resonance = resParam->load();
+    hydraEngine.setFilterResonance (resonance);
 
     juce::dsp::AudioBlock<float> inputBlock (buffer);
     auto oversampledBlock = oversampler->processSamplesUp (inputBlock);
@@ -295,27 +294,6 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         auto* rightChannel = oversampledBlock.getChannelPointer (1);
 
         hydraEngine.renderBlock (leftChannel, rightChannel, osNumSamples);
-        const auto* modulatedCutoffL = hydraEngine.getFilterCutoffBuffer();
-        const auto* modulatedCutoffR = hydraEngine.getFilterCutoffBufferR();
-
-        for (int sample = 0; sample < osNumSamples; ++sample)
-        {
-            const auto fallbackCutoff = cutoffParam->load();
-            const auto cutoffL = modulatedCutoffL != nullptr ? modulatedCutoffL[sample] : fallbackCutoff;
-            const auto cutoffR = modulatedCutoffR != nullptr ? modulatedCutoffR[sample] : fallbackCutoff;
-            const auto warpedCutoffL = clampLowPassCutoffHz (cutoffL, oversampledSampleRate);
-            const auto warpedCutoffR = clampLowPassCutoffHz (cutoffR, oversampledSampleRate);
-            leftChannel[sample] = filterL.processSample (leftChannel[sample],
-                                                           warpedCutoffL,
-                                                           resonance,
-                                                           oversampledSampleRate);
-            rightChannel[sample] = filterR.processSample (rightChannel[sample],
-                                                            warpedCutoffR,
-                                                            resonance,
-                                                            oversampledSampleRate);
-        }
-
-        hydraEngine.applyFilterOverload (leftChannel, rightChannel, osNumSamples);
 
         for (int sample = 0; sample < osNumSamples; ++sample)
         {
@@ -328,8 +306,6 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
         if (hydraEngine.getVoiceAmplitude() == 0.0f)
         {
-            filterL.reset();
-            filterR.reset();
             mHpFilterL.reset();
             mHpFilterR.reset();
         }
@@ -342,20 +318,12 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
             monoRightScratch.resize (static_cast<size_t> (osNumSamples));
 
         hydraEngine.renderBlock (leftChannel, monoRightScratch.data(), osNumSamples);
-        const auto* modulatedCutoff = hydraEngine.getFilterCutoffBuffer();
 
         for (int sample = 0; sample < osNumSamples; ++sample)
         {
-            const auto monoSample = 0.5f * (leftChannel[sample] + monoRightScratch[static_cast<size_t> (sample)]);
-            const auto cutoffHz = modulatedCutoff != nullptr ? modulatedCutoff[sample] : cutoffParam->load();
-            const auto warpedCutoff = clampLowPassCutoffHz (cutoffHz, oversampledSampleRate);
-            leftChannel[sample] = filterL.processSample (monoSample,
-                                                           warpedCutoff,
-                                                           resonance,
-                                                           oversampledSampleRate);
+            leftChannel[sample] = 0.5f * (leftChannel[sample]
+                                          + monoRightScratch[static_cast<size_t> (sample)]);
         }
-
-        hydraEngine.applyFilterOverload (leftChannel, nullptr, osNumSamples);
 
         for (int sample = 0; sample < osNumSamples; ++sample)
         {
@@ -365,10 +333,7 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         }
 
         if (hydraEngine.getVoiceAmplitude() == 0.0f)
-        {
-            filterL.reset();
             mHpFilterL.reset();
-        }
     }
 
     oversampler->processSamplesDown (inputBlock);
