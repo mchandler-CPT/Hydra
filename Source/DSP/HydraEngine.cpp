@@ -104,6 +104,8 @@ void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
     filterAdsr.setParameters (baseFilterEnvelopeParameters);
 
     constexpr auto parameterSmoothingSeconds = 0.02;
+    smoothedDepth.reset (sampleRate, parameterSmoothingSeconds);
+    smoothedDepth.setCurrentAndTargetValue (depth);
     smoothedGirth.reset (sampleRate, parameterSmoothingSeconds);
     smoothedGirth.setCurrentAndTargetValue (girth);
     harmonicTiltSmoothed.reset (sampleRate, parameterSmoothingSeconds);
@@ -150,7 +152,9 @@ void HydraEngine::reset() noexcept
     filterAdsr.reset();
     filterCutoffBuffer.clear();
     filterCutoffBufferR.clear();
+    smoothedDepth.setCurrentAndTargetValue (0.0f);
     smoothedGirth.setCurrentAndTargetValue (0.0f);
+    saturator.reset();
 
     smoothedCutoffHz.setCurrentAndTargetValue (20000.0f);
     smoothedFrequency.setCurrentAndTargetValue (0.0f);
@@ -459,6 +463,7 @@ void HydraEngine::setFilterEnvelopeParameters (float attack, float decay, float 
 void HydraEngine::setDepth (float newDepth) noexcept
 {
     depth = juce::jlimit (0.0f, 1.0f, newDepth);
+    smoothedDepth.setTargetValue (depth);
     applyMacroTargets();
 }
 
@@ -525,6 +530,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         if (! adsr.isActive())
         {
+            (void) smoothedDepth.getNextValue();
             (void) smoothedGirth.getNextValue();
             const auto idleCutoff = smoothedCutoffHz.getCurrentValue();
             filterCutoffBuffer[static_cast<size_t> (sampleIndex)] = idleCutoff;
@@ -544,6 +550,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         const auto dynamicCutoff =
             trackedCutoffFloor + (filterEnvAmt * egrAmount * 3500.0f);
         const auto clampedCutoff = juce::jlimit (20.0f, 21000.0f, dynamicCutoff);
+        const auto currentDepth = smoothedDepth.getNextValue();
         const auto currentGirth = smoothedGirth.getNextValue();
         const auto stereoOffset = 1.0f + (currentGirth * 0.025f);
         const auto cutoffL = juce::jlimit (20.0f, maxSafeCutoffHz, clampedCutoff * stereoOffset);
@@ -666,7 +673,9 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         const auto saturated = saturator.processSample (partialSamplesLeft,
                                                         partialSamplesRight,
-                                                        currentVelocity);
+                                                        currentVelocity,
+                                                        currentDepth,
+                                                        currentGirth);
 
         auto outputL = saturated.first * lastEnvelopeGain;
         auto outputR = saturated.second * lastEnvelopeGain;
@@ -704,6 +713,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         clearAllDelayLines();
         phaseDisperser.reset();
+        saturator.reset();
         filterAdsr.reset();
     }
 }

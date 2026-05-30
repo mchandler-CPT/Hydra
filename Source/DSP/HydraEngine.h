@@ -132,6 +132,7 @@ private:
     std::array<float, numPartials> pitchDriftLfoPhase {};
     juce::LinearSmoothedValue<float> smoothedCutoffHz;
     juce::LinearSmoothedValue<float> smoothedFrequency;
+    juce::LinearSmoothedValue<float> smoothedDepth;
     juce::LinearSmoothedValue<float> smoothedGirth;
     float maxSafeCutoffHz = 21000.0f;
     float depth = 0.0f;
