@@ -52,9 +52,32 @@ void HydraEngine::clearAllDelayLines() noexcept
         voice.clearDelay();
 }
 
+float HydraEngine::trianglePitchDriftMultiplier (float lfoPhase01) noexcept
+{
+    const auto wrappedPhase = lfoPhase01 - std::floor (lfoPhase01);
+    const auto triangle = wrappedPhase < 0.5f
+                              ? (4.0f * wrappedPhase - 1.0f)
+                              : (3.0f - 4.0f * wrappedPhase);
+
+    return 1.0f + triangle * maxPitchDriftCentsMultiplier;
+}
+
+void HydraEngine::advancePitchDriftLfo (float& lfoPhase01, float rateHz, double sr) noexcept
+{
+    lfoPhase01 += rateHz / static_cast<float> (sr);
+
+    if (lfoPhase01 >= 1.0f)
+        lfoPhase01 -= 1.0f;
+}
+
 void HydraEngine::prepare (double newSampleRate, int /*samplesPerBlock*/)
 {
     sampleRate = newSampleRate;
+    noteOnSafetySampleCount = static_cast<float> (sampleRate * 0.001);
+
+    for (int partialIndex = 0; partialIndex < numPartials; ++partialIndex)
+        pitchDriftLfoPhase[static_cast<size_t> (partialIndex)] =
+            static_cast<float> (partialIndex) / static_cast<float> (numPartials);
 
     constexpr double smoothingSeconds = 0.01;
 
@@ -230,7 +253,7 @@ void HydraEngine::noteOn (int midiNoteNumber, float velocity)
         smoothedFrequency.setCurrentAndTargetValue (targetFreq);
 
         for (auto& oscillator : oscillators)
-            oscillator.setPhase (0.0);
+            oscillator.noteOn();
     }
     else
     {
@@ -567,7 +590,11 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
                                         static_cast<float> (samplesSinceNoteOn) / partialAttackSamples);
             }
 
-            const auto fn = sanitizeTargetFrequency (currentBaseFreq * frequencyMultipliers[index]);
+            auto& pitchDriftPhase = pitchDriftLfoPhase[index];
+            advancePitchDriftLfo (pitchDriftPhase, pitchDriftRatesHz[index], sampleRate);
+            const auto pitchDriftMultiplier = trianglePitchDriftMultiplier (pitchDriftPhase);
+            const auto fn = sanitizeTargetFrequency (currentBaseFreq * frequencyMultipliers[index]
+                                                       * pitchDriftMultiplier);
             const auto harmonicFrequency = static_cast<double> (fn);
             oscillator.setFrequency (harmonicFrequency, false);
 
@@ -584,8 +611,18 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
         const auto saturated = saturator.processSample (partialSamplesLeft, partialSamplesRight);
 
-        leftChannel[sampleIndex] = saturated.first * lastEnvelopeGain;
-        rightChannel[sampleIndex] = saturated.second * lastEnvelopeGain;
+        auto outputL = saturated.first * lastEnvelopeGain;
+        auto outputR = saturated.second * lastEnvelopeGain;
+
+        if (samplesSinceNoteOn < static_cast<int64_t> (noteOnSafetySampleCount))
+        {
+            const auto hardRamp = static_cast<float> (samplesSinceNoteOn) / noteOnSafetySampleCount;
+            outputL *= hardRamp;
+            outputR *= hardRamp;
+        }
+
+        leftChannel[sampleIndex] = outputL;
+        rightChannel[sampleIndex] = outputR;
 
         ++samplesSinceNoteOn;
     }
