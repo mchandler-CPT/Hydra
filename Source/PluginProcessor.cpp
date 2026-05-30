@@ -295,18 +295,22 @@ void HydraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         auto* rightChannel = oversampledBlock.getChannelPointer (1);
 
         hydraEngine.renderBlock (leftChannel, rightChannel, osNumSamples);
-        const auto* modulatedCutoff = hydraEngine.getFilterCutoffBuffer();
+        const auto* modulatedCutoffL = hydraEngine.getFilterCutoffBuffer();
+        const auto* modulatedCutoffR = hydraEngine.getFilterCutoffBufferR();
 
         for (int sample = 0; sample < osNumSamples; ++sample)
         {
-            const auto cutoffHz = modulatedCutoff != nullptr ? modulatedCutoff[sample] : cutoffParam->load();
-            const auto warpedCutoff = clampLowPassCutoffHz (cutoffHz, oversampledSampleRate);
+            const auto fallbackCutoff = cutoffParam->load();
+            const auto cutoffL = modulatedCutoffL != nullptr ? modulatedCutoffL[sample] : fallbackCutoff;
+            const auto cutoffR = modulatedCutoffR != nullptr ? modulatedCutoffR[sample] : fallbackCutoff;
+            const auto warpedCutoffL = clampLowPassCutoffHz (cutoffL, oversampledSampleRate);
+            const auto warpedCutoffR = clampLowPassCutoffHz (cutoffR, oversampledSampleRate);
             leftChannel[sample] = filterL.processSample (leftChannel[sample],
-                                                           warpedCutoff,
+                                                           warpedCutoffL,
                                                            resonance,
                                                            oversampledSampleRate);
             rightChannel[sample] = filterR.processSample (rightChannel[sample],
-                                                            warpedCutoff,
+                                                            warpedCutoffR,
                                                             resonance,
                                                             oversampledSampleRate);
         }

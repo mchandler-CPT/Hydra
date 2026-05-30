@@ -388,24 +388,30 @@ TEST_CASE ("HydraEngine Temporal Staggering Verification", "[HydraEngine]")
     fundamentalVoice.configureDelay (kSampleRate, 0);
     highestPartialVoice.configureDelay (kSampleRate, 6);
 
-    REQUIRE (fundamentalVoice.delayInSamples == 0);
+    REQUIRE (fundamentalVoice.maxDelayInSamples == 0);
 
     const auto expectedHighestDelay = static_cast<int> (0.0145f * static_cast<float> (kSampleRate));
-    REQUIRE (highestPartialVoice.delayInSamples == expectedHighestDelay);
-    REQUIRE (highestPartialVoice.delayInSamples > 0);
-
-    REQUIRE (fundamentalVoice.processDelaySample (1.0f) == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (highestPartialVoice.maxDelayInSamples == expectedHighestDelay);
+    REQUIRE (highestPartialVoice.maxDelayInSamples > 0);
 
     HydraPartialVoice delayLine;
     delayLine.configureDelay (kSampleRate, 0);
-    delayLine.delayInSamples = 4;
+    delayLine.maxDelayInSamples = 4;
     delayLine.clearDelay();
 
-    delayLine.processDelaySample (1.0f);
-    delayLine.processDelaySample (2.0f);
-    delayLine.processDelaySample (3.0f);
-    delayLine.processDelaySample (4.0f);
-    REQUIRE (delayLine.processDelaySample (5.0f) == Catch::Approx (1.0f).margin (1.0e-6f));
+    float passthroughL = 0.0f;
+    float passthroughR = 0.0f;
+    delayLine.processDelaySampleStereo (1.0f, 0, 0, passthroughL, passthroughR);
+    REQUIRE (passthroughL == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (passthroughR == Catch::Approx (1.0f).margin (1.0e-6f));
+
+    delayLine.processDelaySampleStereo (1.0f, 4, 4, passthroughL, passthroughR);
+    delayLine.processDelaySampleStereo (2.0f, 4, 4, passthroughL, passthroughR);
+    delayLine.processDelaySampleStereo (3.0f, 4, 4, passthroughL, passthroughR);
+    delayLine.processDelaySampleStereo (4.0f, 4, 4, passthroughL, passthroughR);
+    delayLine.processDelaySampleStereo (5.0f, 4, 4, passthroughL, passthroughR);
+    REQUIRE (passthroughL == Catch::Approx (1.0f).margin (1.0e-6f));
+    REQUIRE (passthroughR == Catch::Approx (1.0f).margin (1.0e-6f));
 }
 
 TEST_CASE ("HydraEngine A-note rendering stays finite", "[HydraEngine]")
