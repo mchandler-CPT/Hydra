@@ -79,6 +79,11 @@ set_target_properties(Hydra PROPERTIES
 
 juce_generate_juce_header(Hydra)
 
+juce_add_binary_data(HydraAssets
+    SOURCES
+        assets/logo.png
+)
+
 # ==============================================================================
 # 4. SOURCE FILE COMPILATION
 # ==============================================================================
@@ -119,6 +124,7 @@ target_include_directories(Hydra PRIVATE Source Source/UI)
 
 # Link your dependencies (Keeping juce_dsp active for instant access to filters/saturation)
 target_link_libraries(Hydra PRIVATE
+    HydraAssets
     juce::juce_audio_utils
     juce::juce_audio_processors
     juce::juce_dsp           

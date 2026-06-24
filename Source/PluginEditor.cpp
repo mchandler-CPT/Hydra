@@ -1,9 +1,11 @@
 #include "PluginEditor.h"
+#include "BinaryData.h"
 #include "DSP/HydraHarmonySnap.h"
 #include "UI/ChromeTextButton.h"
 #include "UI/HydraPalette.h"
 
 #include <array>
+#include <cmath>
 #include <limits>
 
 namespace
@@ -59,9 +61,13 @@ constexpr int kPresetBarHorizontalGap = 8;
 constexpr int kPresetNavInnerGap = 4;
 constexpr int kFooterStripHeight = kFooterZoneGap + kFooterBrandHeight + kFooterTextBottomPadding;
 constexpr int kEnvelopeKnobSize = kRotaryBodyHeight;
-constexpr int kEnvelopeInnerPadding = 10;
+constexpr int kEnvelopeLogoInset = 12;
+constexpr int kEnvelopeLogoMaxWidth = 108;
+constexpr float kHydraLogoScale = 0.68f;
+constexpr float kHydraLogoAspectRatio = 248.0f / 224.0f;
 constexpr int kEnvelopeTabButtonHeight = 24;
 constexpr int kEnvelopeTabButtonGap = 8;
+constexpr int kEnvelopeTabWidthTrim = 10;
 constexpr int kEnvelopeTabRowHeight = kEnvelopeTabButtonHeight + kEnvelopeTabButtonGap;
 constexpr int kEnvelopeAdsrRowHeight = kLabelBandHeight + kRotarySliderWithReadoutHeight + 6;
 constexpr int kEnvelopeSectionHeight = kEnvelopeTabRowHeight + kEnvelopeAdsrRowHeight + 4 + kEnvelopeZoneTopPad;
@@ -197,6 +203,156 @@ constexpr std::array<InversionDisplayText, 6> kInversionDisplayTexts {{
     { "OCTAVE", "(1,2,4,6,3,5,7)" },
     { "BELL", "(1,5,7,6,3,2,4)" },
 }};
+class EmbeddedImageLogo final : public juce::Component
+{
+public:
+    EmbeddedImageLogo (const void* data, int dataSize)
+    {
+        juce::MemoryInputStream stream (data, static_cast<size_t> (dataSize), false);
+        logoImage = juce::ImageFileFormat::loadFrom (stream);
+        setInterceptsMouseClicks (false, false);
+        setOpaque (false);
+    }
+
+    bool isValid() const noexcept { return logoImage.isValid(); }
+
+    void paint (juce::Graphics& g) override
+    {
+        if (! logoImage.isValid())
+            return;
+
+        g.drawImage (logoImage,
+                     getLocalBounds().toFloat(),
+                     juce::RectanglePlacement::centred);
+    }
+
+private:
+    juce::Image logoImage;
+};
+
+static juce::Font fitBdEnergyFont (juce::Rectangle<float> bounds, float& sawAmplitude)
+{
+    static constexpr auto brandText = "bdEnergy";
+
+    for (float fontSize = bounds.getHeight() * 0.72f; fontSize >= 6.0f; fontSize -= 0.5f)
+    {
+        sawAmplitude = fontSize * 0.34f;
+
+        const auto font = juce::Font (juce::FontOptions { fontSize }.withName ("Arial"));
+        const auto totalHeight = sawAmplitude + font.getHeight();
+        const auto totalWidth = font.getStringWidthFloat (brandText);
+
+        if (totalHeight <= bounds.getHeight() && totalWidth <= bounds.getWidth())
+            return font;
+    }
+
+    sawAmplitude = 6.0f;
+    return juce::Font (juce::FontOptions { 6.0f }.withName ("Arial"));
+}
+
+static void drawBdEnergySawStroke (juce::Graphics& g,
+                                   juce::Rectangle<float> energyBounds,
+                                   float yBase,
+                                   float yPeak,
+                                   float strokeWidth,
+                                   juce::Colour colour)
+{
+    if (energyBounds.isEmpty())
+        return;
+
+    constexpr int numTeeth = 3;
+    const auto toothWidth = energyBounds.getWidth() / (float) numTeeth;
+
+    juce::Path saw;
+    auto x = energyBounds.getX();
+    saw.startNewSubPath (x, yBase);
+
+    for (int tooth = 0; tooth < numTeeth; ++tooth)
+    {
+        const auto xPeak = x + toothWidth;
+        saw.lineTo (xPeak, yPeak);
+
+        if (tooth < numTeeth - 1)
+        {
+            saw.lineTo (xPeak, yBase);
+            x = xPeak;
+        }
+    }
+
+    g.setColour (colour);
+    g.strokePath (saw,
+                  juce::PathStrokeType (strokeWidth,
+                                        juce::PathStrokeType::curved,
+                                        juce::PathStrokeType::rounded));
+}
+
+class BdEnergyBrandLogo final : public juce::Component
+{
+public:
+    BdEnergyBrandLogo()
+    {
+        setInterceptsMouseClicks (false, false);
+        setOpaque (false);
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        static constexpr auto brandText = "bdEnergy";
+        static constexpr auto nergyText = "nergy";
+        static constexpr auto beforeNergyText = "bdE";
+
+        auto bounds = getLocalBounds().toFloat().reduced (1.0f);
+
+        if (bounds.isEmpty())
+            return;
+
+        const auto brandColour = HydraPalette::colour (HydraPalette::accentGold);
+
+        float sawAmplitude = 0.0f;
+        const auto font = fitBdEnergyFont (bounds, sawAmplitude);
+        const auto totalTextWidth = font.getStringWidthFloat (brandText);
+        const auto nergyWidth = font.getStringWidthFloat (nergyText);
+        const auto beforeNergyWidth = font.getStringWidthFloat (beforeNergyText);
+        const auto totalHeight = sawAmplitude + font.getHeight();
+        const auto topY = bounds.getY() + ((bounds.getHeight() - totalHeight) * 0.5f);
+        const auto textTop = topY + sawAmplitude;
+        const auto textLeft = bounds.getCentreX() - (totalTextWidth * 0.5f);
+
+        g.setColour (brandColour);
+        g.setFont (font);
+        g.drawText (brandText,
+                    juce::Rectangle<float> (textLeft, textTop, totalTextWidth, font.getHeight()),
+                    juce::Justification::topLeft,
+                    false);
+
+        const auto nergyLeft = textLeft + beforeNergyWidth;
+        const auto yBase = textTop;
+        const auto yPeak = yBase - sawAmplitude;
+        const auto strokeWidth = juce::jmax (1.0f, font.getHeight() * 0.085f);
+
+        drawBdEnergySawStroke (g,
+                               juce::Rectangle<float> (nergyLeft, yPeak, nergyWidth, sawAmplitude),
+                               yBase,
+                               yPeak,
+                               strokeWidth,
+                               brandColour);
+    }
+};
+
+std::pair<int, int> computeLogoDimensions (int maxWidth, int maxHeight, float widthToHeightAspect)
+{
+    auto width = juce::jmin (maxWidth, (int) std::lround ((float) maxHeight * widthToHeightAspect));
+    auto height = (int) std::lround ((float) width / widthToHeightAspect);
+
+    if (height > maxHeight)
+    {
+        height = maxHeight;
+        width = (int) std::lround ((float) height * widthToHeightAspect);
+    }
+
+    return { width, height };
+}
+
 } // namespace
 
 HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& processor)
@@ -206,6 +362,9 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
       xyExplorer (processor),
       keyboardComponent (processor.getKeyboardState(), juce::MidiKeyboardComponent::horizontalKeyboard)
 {
+    envelopeLogo = std::make_unique<EmbeddedImageLogo> (BinaryData::logo_png, BinaryData::logo_pngSize);
+    envelopeBrandLogo = std::make_unique<BdEnergyBrandLogo>();
+
     keyboardComponent.setVisible (usesKeyboardStrip);
     setSize (kEditorWidth, usesKeyboardStrip ? kEditorHeightWithKeyboard : kEditorHeightPlugin);
 
@@ -231,6 +390,8 @@ HydraAudioProcessorEditor::HydraAudioProcessorEditor (HydraAudioProcessor& proce
     filterEnvButton.setButtonText ("[ FILTER ]");
     addAndMakeVisible (volumeEnvButton);
     addAndMakeVisible (filterEnvButton);
+    addAndMakeVisible (*envelopeLogo);
+    addAndMakeVisible (*envelopeBrandLogo);
 
     volumeEnvButton.onClick = [this] { selectVolumeEnvelopeTab(); };
     filterEnvButton.onClick = [this] { selectFilterEnvelopeTab(); };
@@ -754,6 +915,10 @@ void HydraAudioProcessorEditor::resized()
         gainLabel.toFront (false);
         volumeEnvButton.toFront (false);
         filterEnvButton.toFront (false);
+        if (envelopeLogo != nullptr)
+            envelopeLogo->toFront (false);
+        if (envelopeBrandLogo != nullptr)
+            envelopeBrandLogo->toFront (false);
         attackSlider.toFront (false);
         attackLabel.toFront (false);
         decaySlider.toFront (false);
@@ -844,14 +1009,60 @@ void HydraAudioProcessorEditor::resized()
     placeModulationColumn (4, egrAmountSlider, egrAmountLabel, kRotarySliderWithReadoutHeight);
     placeModulationColumn (5, envWarpSlider, envWarpLabel, kRotarySliderWithReadoutHeight);
 
-    const auto adsrClusterWidth = modulationColumnWidth * 4;
-
     auto envelopeArea = panelLayout.envelopeZone;
+    const auto fullEnvelopeArea = envelopeArea;
+
+    const auto logoMaxHeight = fullEnvelopeArea.getHeight();
+    const auto [rawHydraLogoWidth, rawHydraLogoHeight] =
+        computeLogoDimensions (kEnvelopeLogoMaxWidth, logoMaxHeight, kHydraLogoAspectRatio);
+    const auto hydraLogoWidth = juce::jmax (1, (int) std::lround ((float) rawHydraLogoWidth * kHydraLogoScale));
+    const auto hydraLogoHeight = juce::jmax (1, (int) std::lround ((float) rawHydraLogoHeight * kHydraLogoScale));
+    const auto brandLogoWidth = kEnvelopeLogoMaxWidth;
+    const auto brandLogoHeight = hydraLogoHeight;
+
+    const auto leftFootprint = kEnvelopeLogoMaxWidth + kEnvelopeLogoInset;
+    const auto rightFootprint = brandLogoWidth + kEnvelopeLogoInset;
+    const auto sideBalanceWidth = juce::jmax (leftFootprint, rightFootprint);
+
+    if (envelopeLogo != nullptr && hydraLogoWidth > 0)
+    {
+        envelopeLogo->setBounds (fullEnvelopeArea.getX() + kEnvelopeLogoInset
+                                               + ((kEnvelopeLogoMaxWidth - hydraLogoWidth) / 2),
+                                 fullEnvelopeArea.getY() + ((logoMaxHeight - hydraLogoHeight) / 2),
+                                 hydraLogoWidth,
+                                 hydraLogoHeight);
+        envelopeLogo->setVisible (true);
+    }
+    else if (envelopeLogo != nullptr)
+    {
+        envelopeLogo->setVisible (false);
+    }
+
+    if (envelopeBrandLogo != nullptr && brandLogoWidth > 0)
+    {
+        envelopeBrandLogo->setBounds (fullEnvelopeArea.getRight() - kEnvelopeLogoInset - brandLogoWidth,
+                                    fullEnvelopeArea.getY() + ((logoMaxHeight - brandLogoHeight) / 2),
+                                    brandLogoWidth,
+                                    brandLogoHeight);
+        envelopeBrandLogo->setVisible (true);
+    }
+    else if (envelopeBrandLogo != nullptr)
+    {
+        envelopeBrandLogo->setVisible (false);
+    }
 
     envelopeArea.removeFromTop (kEnvelopeZoneTopPad);
+    envelopeArea.removeFromLeft (sideBalanceWidth);
+    envelopeArea.removeFromRight (sideBalanceWidth);
+
+    const auto adsrClusterWidth = modulationColumnWidth * 4;
+    const auto envelopeControlsLeft = envelopeArea.getX()
+                                    + juce::jmax (0, (envelopeArea.getWidth() - adsrClusterWidth) / 2);
 
     auto tabRow = envelopeArea.removeFromTop (kEnvelopeTabRowHeight);
-    auto tabCluster = tabRow.withSizeKeepingCentre (adsrClusterWidth, tabRow.getHeight());
+    const auto tabClusterWidth = adsrClusterWidth - kEnvelopeTabWidthTrim;
+    auto tabCluster = tabRow.withX (envelopeControlsLeft + (kEnvelopeTabWidthTrim / 2))
+                            .withWidth (tabClusterWidth);
     const auto tabButtonWidth = (tabCluster.getWidth() - kEnvelopeTabButtonGap) / 2;
     auto volumeTabBounds = tabCluster.removeFromLeft (tabButtonWidth);
     tabCluster.removeFromLeft (kEnvelopeTabButtonGap);
@@ -859,8 +1070,8 @@ void HydraAudioProcessorEditor::resized()
     volumeEnvButton.setBounds (volumeTabBounds.reduced (0, 1));
     filterEnvButton.setBounds (filterTabBounds.reduced (0, 1));
 
-    auto adsrRow = envelopeArea.reduced (kEnvelopeInnerPadding, 0);
-    adsrRow = adsrRow.withSizeKeepingCentre (adsrClusterWidth, adsrRow.getHeight());
+    auto adsrRow = envelopeArea;
+    adsrRow = adsrRow.withX (envelopeControlsLeft).withWidth (adsrClusterWidth);
 
     const auto placeEnvelopeDial = [] (juce::Rectangle<int>& row,
                                        int columnWidth,
@@ -877,6 +1088,12 @@ void HydraAudioProcessorEditor::resized()
     placeEnvelopeDial (adsrRow, modulationColumnWidth, decaySlider, decayLabel);
     placeEnvelopeDial (adsrRow, modulationColumnWidth, sustainSlider, sustainLabel);
     placeEnvelopeDial (adsrRow, modulationColumnWidth, releaseSlider, releaseLabel);
+
+    if (envelopeLogo != nullptr)
+        envelopeLogo->toFront (false);
+
+    if (envelopeBrandLogo != nullptr)
+        envelopeBrandLogo->toFront (false);
 
     mPrevButton.toFront (false);
     mNextButton.toFront (false);

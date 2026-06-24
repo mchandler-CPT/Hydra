@@ -74,6 +74,8 @@ private:
 
     SnapToggleButton volumeEnvButton;
     SnapToggleButton filterEnvButton;
+    std::unique_ptr<juce::Component> envelopeLogo;
+    std::unique_ptr<juce::Component> envelopeBrandLogo;
 
     juce::Slider harmonySlider;
     SnapToggleButton harmonyQuantizeButton;
