@@ -26,6 +26,12 @@ void HydraParallelSaturator::reset() noexcept
     lastMidOutputR = 0.0f;
     lastHighOutputL = 0.0f;
     lastHighOutputR = 0.0f;
+
+    for (auto& stage : highGlossChainL)
+        stage.reset();
+
+    for (auto& stage : highGlossChainR)
+        stage.reset();
 }
 
 float HydraParallelSaturator::processLowBand (float x, float velocity) noexcept
@@ -51,17 +57,43 @@ float HydraParallelSaturator::processMidBand (float x, float velocity) noexcept
     return std::tanh (x * negDrive) * negPullback;
 }
 
-float HydraParallelSaturator::processHighBand (float x, float velocity) noexcept
+float HydraParallelSaturator::processHighBandBaseline (float x) noexcept
 {
     static constexpr float symmetricPosLimit = 0.70f;
     static constexpr float symmetricNegLimit = -0.70f;
-    static constexpr float asymmetricNegLimit = -0.58f;
 
     if (x >= 0.0f)
         return std::min (x, symmetricPosLimit);
 
-    const auto negLimit = blendTowardAsymmetry (symmetricNegLimit, asymmetricNegLimit, velocity);
-    return std::max (x, negLimit);
+    return std::max (x, symmetricNegLimit);
+}
+
+float HydraParallelSaturator::processHighBandGlossExcited (float x,
+                                                           float girthMacro,
+                                                           HighBandAllPassStage* glossChain) noexcept
+{
+    auto glossed = x;
+
+    for (size_t stage = 0; stage < highGlossCoefficients.size(); ++stage)
+        glossed = glossChain[stage].processSample (glossed, highGlossCoefficients[stage]);
+
+    const auto bias = girthMacro * 0.35f;
+    const auto biasCompensation = std::tanh (bias);
+
+    return std::tanh (glossed + bias) - biasCompensation;
+}
+
+float HydraParallelSaturator::processHighBand (float x,
+                                               float girthMacro,
+                                               HighBandAllPassStage* glossChain) noexcept
+{
+    const auto dry = processHighBandBaseline (x);
+
+    if (girthMacro <= 0.0f)
+        return dry;
+
+    const auto wet = processHighBandGlossExcited (x, girthMacro, glossChain);
+    return dry + girthMacro * (wet - dry);
 }
 
 std::pair<float, float> HydraParallelSaturator::processSample (
@@ -94,8 +126,8 @@ std::pair<float, float> HydraParallelSaturator::processSample (
     const auto saturatedLowR = processLowBand (lowBandR, clampedVelocity);
     const auto saturatedMidL = processMidBand (midInputL, clampedVelocity);
     const auto saturatedMidR = processMidBand (midInputR, clampedVelocity);
-    const auto saturatedHighL = processHighBand (highInputL, clampedVelocity);
-    const auto saturatedHighR = processHighBand (highInputR, clampedVelocity);
+    const auto saturatedHighL = processHighBand (highInputL, clampedGirth, highGlossChainL.data());
+    const auto saturatedHighR = processHighBand (highInputR, clampedGirth, highGlossChainR.data());
 
     lastMidOutputL = saturatedMidL;
     lastMidOutputR = saturatedMidR;

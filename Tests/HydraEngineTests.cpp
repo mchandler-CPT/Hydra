@@ -246,8 +246,9 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     highOnlyLeft[5] = 2.0f;
     highOnlyLeft[6] = 2.0f;
 
+    const auto highSum = highOnlyLeft[5] + highOnlyLeft[6];
     const auto clipped = saturator.processSample (highOnlyLeft, highOnlyRight, 1.0f, 0.0f, 0.0f);
-    REQUIRE (clipped.first == Catch::Approx (0.7f).margin (1.0e-5f));
+    REQUIRE (clipped.first == Catch::Approx (std::min (highSum, 0.70f)).margin (1.0e-5f));
     REQUIRE (clipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
 
     std::array<float, HydraParallelSaturator::numPartials> highOnlyNegativeLeft {};
@@ -255,8 +256,18 @@ TEST_CASE ("HydraParallelSaturator Boundary Verification", "[HydraParallelSatura
     highOnlyNegativeLeft[5] = -2.0f;
     highOnlyNegativeLeft[6] = -2.0f;
 
+    const auto negativeHighSum = highOnlyNegativeLeft[5] + highOnlyNegativeLeft[6];
     const auto negativeClipped = saturator.processSample (highOnlyNegativeLeft, highOnlyNegativeRight, 1.0f, 0.0f, 0.0f);
-    REQUIRE (negativeClipped.first == Catch::Approx (-0.58f).margin (1.0e-5f));
+    REQUIRE (negativeClipped.first == Catch::Approx (std::max (negativeHighSum, -0.70f)).margin (1.0e-5f));
+
+    SECTION ("High-band gloss exciter scales with girth")
+    {
+        saturator.reset();
+        const auto neutralHigh = saturator.processSample (highOnlyLeft, highOnlyRight, 1.0f, 0.0f, 0.0f);
+        saturator.reset();
+        const auto glossedHigh = saturator.processSample (highOnlyLeft, highOnlyRight, 1.0f, 0.0f, 1.0f);
+        REQUIRE (glossedHigh.first != Catch::Approx (neutralHigh.first).margin (1.0e-4f));
+    }
     REQUIRE (negativeClipped.second == Catch::Approx (0.0f).margin (1.0e-6f));
 
     SECTION ("Symmetry break proves even-harmonic MGTR asymmetry")

@@ -641,12 +641,7 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
         const auto ov = juce::jlimit (0.0f, 1.0f, smoothedFilterOverload.getNextValue());
         const auto foldingDrive = 1.0f + (std::pow (ov, 3.0f) * 2.5f);
         const auto folderWetMix = std::pow (ov, 2.0f);
-        auto fmDepth = 0.0f;
 
-        if (ov > 0.9f)
-            fmDepth = juce::jlimit (0.0f, 0.3f, ((ov - 0.9f) / 0.1f) * 0.3f);
-
-        auto fmModulationOffset = 0.0;
         const auto safeLastFilterL = std::isfinite (lastFilterOutputL) ? lastFilterOutputL : 0.0;
         const auto safeLastFilterR = std::isfinite (lastFilterOutputR) ? lastFilterOutputR : 0.0;
         const auto cdcOffsetL = safeLastFilterL * static_cast<double> (cdcDepth) * 0.45;
@@ -702,19 +697,16 @@ void HydraEngine::renderBlock (float* leftChannel, float* rightChannel, int numS
 
             if (cdcDepth > 0.0f)
             {
-                oscillatedL = oscillator.evaluateSample (morph, fmModulationOffset + cdcOffsetL);
-                oscillatedR = oscillator.evaluateSample (morph, fmModulationOffset + cdcOffsetR);
+                oscillatedL = oscillator.evaluateSample (morph, cdcOffsetL);
+                oscillatedR = oscillator.evaluateSample (morph, cdcOffsetR);
             }
             else
             {
-                const auto oscillated = oscillator.evaluateSample (morph, fmModulationOffset);
+                const auto oscillated = oscillator.evaluateSample (morph, 0.0);
                 oscillatedL = oscillated;
                 oscillatedR = oscillated;
             }
 
-            const auto fmSource = 0.5f * (oscillatedL + oscillatedR);
-            fmModulationOffset = static_cast<double> (fmSource) * static_cast<double> (fmDepth)
-                               * juce::MathConstants<double>::twoPi * 2.0;
             const auto gain = amplitude * phaseIn * damping;
             float delayedL = oscillatedL;
             float delayedR = oscillatedR;
