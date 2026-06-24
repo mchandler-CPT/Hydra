@@ -35,7 +35,7 @@ Source: "installer_dist\Hydra.vst3\*"; DestDir: "{commoncf}\VST3\Hydra.vst3"; Fl
 Source: "installer_dist\Presets\*"; DestDir: "{userappdata}\The Hydra\Presets"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; Optional PDF manual
-Source: "installer_dist\README.pdf"; DestDir: "{userappdata}\The Hydra"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "installer_dist\README.pdf"; DestDir: "{userappdata}\The Hydra"; Flags: ignoreversion
 
 [Icons]
 ; Desktop shortcut to the Hydra manual PDF

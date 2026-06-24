@@ -90,9 +90,9 @@ jobs:
             if (Test-Path -LiteralPath $presetsDst) { Remove-Item -LiteralPath $presetsDst -Recurse -Force }
             Copy-Item -LiteralPath 'Presets' -Destination $presetsDst -Recurse -Force
           }
-          if (Test-Path -LiteralPath 'README.pdf') {
-            Copy-Item -LiteralPath 'README.pdf' -Destination $dist -Force
-          }
+          $readmeSrc = 'assets/README.pdf'
+          if (-not (Test-Path -LiteralPath $readmeSrc)) { throw "Missing ${readmeSrc}" }
+          Copy-Item -LiteralPath $readmeSrc -Destination (Join-Path $dist 'README.pdf') -Force
 
       - name: Build Windows installer
         if: matrix.os == 'windows-latest'
@@ -172,6 +172,21 @@ jobs:
             exit 1
           fi
 
+          if [ ! -f assets/README.pdf ]; then
+            echo "Missing assets/README.pdf"
+            exit 1
+          fi
+
+          DOCS_ROOT="dist/docs_payload"
+          mkdir -p "${DOCS_ROOT}"
+          cp assets/README.pdf "${DOCS_ROOT}/README.pdf"
+
+          pkgbuild --root "${DOCS_ROOT}" \
+                   --identifier com.synth.hydra.readme \
+                   --version "${VERSION}" \
+                   --install-location "/Library/Application Support/The Hydra" \
+                   dist/Hydra_README.pkg
+
           pkgbuild --component "${VST3_COMPONENT}" \
                    --identifier com.synth.hydra.vst3 \
                    --version "${VERSION}" \
@@ -187,6 +202,7 @@ jobs:
           productbuild --synthesize \
                        --package dist/Hydra_VST3.pkg \
                        --package dist/Hydra_AU.pkg \
+                       --package dist/Hydra_README.pkg \
                        dist/Distribution.xml
 
           productbuild --distribution dist/Distribution.xml \
