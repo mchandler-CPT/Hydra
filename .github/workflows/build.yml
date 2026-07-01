@@ -187,7 +187,7 @@ jobs:
           mkdir -p "${DOCS_ROOT}"
           cp assets/README.pdf "${DOCS_ROOT}/README.pdf"
 
-          PRESETS_ROOT="dist/presets_payload/Library/Application Support/dbEnergy/The Hydra/Presets"
+          PRESETS_ROOT="dist/presets_payload/Library/Application Support/bdEnergy/The Hydra/Presets"
           mkdir -p "${PRESETS_ROOT}"
           cp Presets/*.hydra "${PRESETS_ROOT}/"
           chmod +x scripts/macos/postinstall

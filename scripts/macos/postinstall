@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-FACTORY_PRESETS="/Library/Application Support/dbEnergy/The Hydra/Presets"
+FACTORY_PRESETS="/Library/Application Support/bdEnergy/The Hydra/Presets"
 
 if [ ! -d "${FACTORY_PRESETS}" ]; then
     exit 0
@@ -19,10 +19,10 @@ for user_home in /Users/*; do
         continue
     fi
 
-    dest="${user_home}/Library/Application Support/dbEnergy/The Hydra/Presets"
+    dest="${user_home}/Library/Application Support/bdEnergy/The Hydra/Presets"
     mkdir -p "${dest}"
     /usr/bin/ditto "${FACTORY_PRESETS}/." "${dest}/"
-    /usr/bin/chown -R "${username}:staff" "${user_home}/Library/Application Support/dbEnergy"
+    /usr/bin/chown -R "${username}:staff" "${user_home}/Library/Application Support/bdEnergy"
 done
 
 exit 0

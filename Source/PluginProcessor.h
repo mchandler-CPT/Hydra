@@ -74,7 +74,7 @@ private:
     juce::dsp::StateVariableTPTFilter<float> mHpFilterR;
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     juce::AudioProcessorValueTreeState apvts;
-    PresetManager presetManager { apvts, "The Hydra", "dbEnergy", ".hydra" };
+    PresetManager presetManager { apvts, "The Hydra", "bdEnergy", ".hydra" };
 
     std::atomic<float>* depthParam { nullptr };
     std::atomic<float>* girthParam { nullptr };

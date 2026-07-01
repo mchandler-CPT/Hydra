@@ -23,7 +23,7 @@
 - **Front-Panel UI — 100% Complete:**
   - `BoutiqueLookAndFeel` custom rotary skin (`Source/UI/`).
   - `PluginEditor` with APVTS `SliderAttachment` wiring. LookAndFeel nullified in destructor per host-safety rule.
-- **Factory Presets:** 29 `.hydra` files in root `Presets/`. Installers deploy to the same path `PresetManager` uses: `%AppData%\dbEnergy\The Hydra\Presets` (Windows) and `~/Library/Application Support/dbEnergy/The Hydra/Presets` (macOS via postinstall copy from system staging).
+- **Factory Presets:** 29 `.hydra` files in root `Presets/`. Installers deploy to the same path `PresetManager` uses: `%AppData%\bdEnergy\The Hydra\Presets` (Windows) and `~/Library/Application Support/bdEnergy/The Hydra/Presets` (macOS via postinstall copy from system staging).
 - **Next Immediate Milestone:** End-to-end DAW validation (Standalone/VST3) and visual polish pass.
 
 ## Technical Decisions Ledger
