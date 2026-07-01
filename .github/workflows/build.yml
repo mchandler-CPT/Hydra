@@ -85,11 +85,12 @@ jobs:
           if (Test-Path -LiteralPath $hydraVst3) { Remove-Item -LiteralPath $hydraVst3 -Recurse -Force }
           New-Item -ItemType Directory -Path $hydraVst3 -Force | Out-Null
           Get-ChildItem -LiteralPath $bundle.FullName -Force | Copy-Item -Destination $hydraVst3 -Recurse -Force
-          if (Test-Path -LiteralPath 'Presets') {
-            $presetsDst = Join-Path $dist 'Presets'
-            if (Test-Path -LiteralPath $presetsDst) { Remove-Item -LiteralPath $presetsDst -Recurse -Force }
-            Copy-Item -LiteralPath 'Presets' -Destination $presetsDst -Recurse -Force
-          }
+          if (-not (Test-Path -LiteralPath 'Presets')) { throw 'Missing Presets folder' }
+          $presetFiles = Get-ChildItem -LiteralPath 'Presets' -Filter '*.hydra' -File
+          if ($presetFiles.Count -eq 0) { throw 'No .hydra factory presets found in Presets/' }
+          $presetsDst = Join-Path $dist 'Presets'
+          if (Test-Path -LiteralPath $presetsDst) { Remove-Item -LiteralPath $presetsDst -Recurse -Force }
+          Copy-Item -LiteralPath 'Presets' -Destination $presetsDst -Recurse -Force
           $readmeSrc = 'assets/README.pdf'
           if (-not (Test-Path -LiteralPath $readmeSrc)) { throw "Missing ${readmeSrc}" }
           Copy-Item -LiteralPath $readmeSrc -Destination (Join-Path $dist 'README.pdf') -Force
@@ -177,9 +178,26 @@ jobs:
             exit 1
           fi
 
+          if [ ! -d Presets ] || [ -z "$(find Presets -maxdepth 1 -name '*.hydra' -print -quit)" ]; then
+            echo "Missing factory presets in Presets/"
+            exit 1
+          fi
+
           DOCS_ROOT="dist/docs_payload"
           mkdir -p "${DOCS_ROOT}"
           cp assets/README.pdf "${DOCS_ROOT}/README.pdf"
+
+          PRESETS_ROOT="dist/presets_payload/Library/Application Support/dbEnergy/The Hydra/Presets"
+          mkdir -p "${PRESETS_ROOT}"
+          cp Presets/*.hydra "${PRESETS_ROOT}/"
+          chmod +x scripts/macos/postinstall
+
+          pkgbuild --root dist/presets_payload \
+                   --scripts scripts/macos \
+                   --identifier com.synth.hydra.presets \
+                   --version "${VERSION}" \
+                   --install-location / \
+                   dist/Hydra_Presets.pkg
 
           pkgbuild --root "${DOCS_ROOT}" \
                    --identifier com.synth.hydra.readme \
@@ -203,6 +221,7 @@ jobs:
                        --package dist/Hydra_VST3.pkg \
                        --package dist/Hydra_AU.pkg \
                        --package dist/Hydra_README.pkg \
+                       --package dist/Hydra_Presets.pkg \
                        dist/Distribution.xml
 
           productbuild --distribution dist/Distribution.xml \

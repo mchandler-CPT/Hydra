@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="09 - Bright Major">
+  <PARAM id="attack" value="0.05582724139094353"/>
+  <PARAM id="cutoff" value="9662.1591796875"/>
+  <PARAM id="decay" value="0.4866755306720734"/>
+  <PARAM id="depth" value="0.3380281627178192"/>
+  <PARAM id="egrAmount" value="0.5"/>
+  <PARAM id="envWarp" value="-0.1359999775886536"/>
+  <PARAM id="filterAttack" value="0.06826655566692352"/>
+  <PARAM id="filterDecay" value="2.454464673995972"/>
+  <PARAM id="filterOverload" value="0.3700000047683716"/>
+  <PARAM id="filterRelease" value="0.5"/>
+  <PARAM id="filterSustain" value="0.699999988079071"/>
+  <PARAM id="gain" value="0.4880000054836273"/>
+  <PARAM id="girth" value="0.8943662047386169"/>
+  <PARAM id="glideTime" value="0.04800000041723251"/>
+  <PARAM id="harmony" value="0.75"/>
+  <PARAM id="harmonyQuantize" value="1.0"/>
+  <PARAM id="hpCutoff" value="20.07243919372559"/>
+  <PARAM id="inversion" value="0.0"/>
+  <PARAM id="kbTrack" value="0.4899999797344208"/>
+  <PARAM id="release" value="0.5000000596046448"/>
+  <PARAM id="res" value="0.3919999003410339"/>
+  <PARAM id="sustain" value="0.800000011920929"/>
+  <PARAM id="tilt" value="0.3279999494552612"/>
+</PARAMETERS>

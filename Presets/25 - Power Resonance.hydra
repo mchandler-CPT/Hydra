@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="Mids Power Resonance">
+  <PARAM id="attack" value="0.001000000047497451"/>
+  <PARAM id="cutoff" value="15092.484375"/>
+  <PARAM id="decay" value="0.2999999821186066"/>
+  <PARAM id="depth" value="1.0"/>
+  <PARAM id="egrAmount" value="0.5799999237060547"/>
+  <PARAM id="envWarp" value="0.7599999904632568"/>
+  <PARAM id="filterAttack" value="0.007742837071418762"/>
+  <PARAM id="filterDecay" value="0.300000011920929"/>
+  <PARAM id="filterOverload" value="0.7199999690055847"/>
+  <PARAM id="filterRelease" value="0.5"/>
+  <PARAM id="filterSustain" value="0.3680000007152557"/>
+  <PARAM id="gain" value="0.5"/>
+  <PARAM id="girth" value="1.0"/>
+  <PARAM id="glideTime" value="0.05000000074505806"/>
+  <PARAM id="harmony" value="0.25"/>
+  <PARAM id="harmonyQuantize" value="1.0"/>
+  <PARAM id="hpCutoff" value="35.0"/>
+  <PARAM id="inversion" value="1.0"/>
+  <PARAM id="kbTrack" value="0.3700000047683716"/>
+  <PARAM id="release" value="0.009999999776482582"/>
+  <PARAM id="res" value="2.664000034332275"/>
+  <PARAM id="sustain" value="1.0"/>
+  <PARAM id="tilt" value="-0.5759999752044678"/>
+</PARAMETERS>

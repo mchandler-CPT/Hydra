@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="12 - Warm hit">
+  <PARAM id="attack" value="0.001000000047497451"/>
+  <PARAM id="cutoff" value="6894.7294921875"/>
+  <PARAM id="decay" value="0.2538778483867645"/>
+  <PARAM id="depth" value="0.8591549396514893"/>
+  <PARAM id="egrAmount" value="0.4800000190734863"/>
+  <PARAM id="envWarp" value="0.5520000457763672"/>
+  <PARAM id="filterAttack" value="0.03357735648751259"/>
+  <PARAM id="filterDecay" value="0.300000011920929"/>
+  <PARAM id="filterOverload" value="0.5799999833106995"/>
+  <PARAM id="filterRelease" value="0.5"/>
+  <PARAM id="filterSustain" value="0.699999988079071"/>
+  <PARAM id="gain" value="0.5"/>
+  <PARAM id="girth" value="0.3873239159584045"/>
+  <PARAM id="glideTime" value="0.01800000108778477"/>
+  <PARAM id="harmony" value="0.0"/>
+  <PARAM id="harmonyQuantize" value="0.0"/>
+  <PARAM id="hpCutoff" value="20.0"/>
+  <PARAM id="inversion" value="0.0"/>
+  <PARAM id="kbTrack" value="0.5199999809265137"/>
+  <PARAM id="release" value="0.6444049477577209"/>
+  <PARAM id="res" value="1.224000096321106"/>
+  <PARAM id="sustain" value="0.03999997675418854"/>
+  <PARAM id="tilt" value="0.2319999933242798"/>
+</PARAMETERS>

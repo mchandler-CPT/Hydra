@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="07 - Rubber Band Bass">
+  <PARAM id="attack" value="0.008371285162866116"/>
+  <PARAM id="cutoff" value="528.3790283203125"/>
+  <PARAM id="decay" value="0.2325821369886398"/>
+  <PARAM id="depth" value="0.1992957890033722"/>
+  <PARAM id="egrAmount" value="0.5699999332427979"/>
+  <PARAM id="envWarp" value="1.0"/>
+  <PARAM id="filterAttack" value="0.00837111659348011"/>
+  <PARAM id="filterDecay" value="0.05482476204633713"/>
+  <PARAM id="filterOverload" value="0.5600000023841858"/>
+  <PARAM id="filterRelease" value="0.7595652341842651"/>
+  <PARAM id="filterSustain" value="0.3615999817848206"/>
+  <PARAM id="gain" value="0.5"/>
+  <PARAM id="girth" value="0.1661971211433411"/>
+  <PARAM id="glideTime" value="0.0"/>
+  <PARAM id="harmony" value="0.75"/>
+  <PARAM id="harmonyQuantize" value="0.0"/>
+  <PARAM id="hpCutoff" value="20.0"/>
+  <PARAM id="inversion" value="4.0"/>
+  <PARAM id="kbTrack" value="0.7400000095367432"/>
+  <PARAM id="release" value="0.4160206913948059"/>
+  <PARAM id="res" value="3.039998769760132"/>
+  <PARAM id="sustain" value="0.2016001045703888"/>
+  <PARAM id="tilt" value="-0.513599693775177"/>
+</PARAMETERS>

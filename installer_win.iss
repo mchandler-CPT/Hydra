@@ -31,8 +31,8 @@ Name: "desktopmanual"; Description: "Create a Desktop Shortcut for the README ma
 ; VST3 bundle (recursive copy from Hydra-specific staging area)
 Source: "installer_dist\Hydra.vst3\*"; DestDir: "{commoncf}\VST3\Hydra.vst3"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Presets
-Source: "installer_dist\Presets\*"; DestDir: "{userappdata}\The Hydra\Presets"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+; Factory presets (must match PresetManager: %AppData%\dbEnergy\The Hydra\Presets)
+Source: "installer_dist\Presets\*"; DestDir: "{userappdata}\dbEnergy\The Hydra\Presets"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Optional PDF manual
 Source: "installer_dist\README.pdf"; DestDir: "{userappdata}\The Hydra"; Flags: ignoreversion

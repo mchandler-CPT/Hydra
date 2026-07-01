@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="10 - The Tonibone">
+  <PARAM id="attack" value="0.01943489350378513"/>
+  <PARAM id="cutoff" value="2135.394775390625"/>
+  <PARAM id="decay" value="0.4155206680297852"/>
+  <PARAM id="depth" value="0.6443662047386169"/>
+  <PARAM id="egrAmount" value="0.1799999475479126"/>
+  <PARAM id="envWarp" value="0.5520000457763672"/>
+  <PARAM id="filterAttack" value="1.356509447097778"/>
+  <PARAM id="filterDecay" value="1.397624850273132"/>
+  <PARAM id="filterOverload" value="1.0"/>
+  <PARAM id="filterRelease" value="2.125723123550415"/>
+  <PARAM id="filterSustain" value="0.699999988079071"/>
+  <PARAM id="gain" value="0.4560000002384186"/>
+  <PARAM id="girth" value="0.5739436745643616"/>
+  <PARAM id="glideTime" value="0.07400000095367432"/>
+  <PARAM id="harmony" value="1.0"/>
+  <PARAM id="harmonyQuantize" value="0.0"/>
+  <PARAM id="hpCutoff" value="28.43302536010742"/>
+  <PARAM id="inversion" value="0.0"/>
+  <PARAM id="kbTrack" value="0.449999988079071"/>
+  <PARAM id="release" value="0.7354159951210022"/>
+  <PARAM id="res" value="1.704000115394592"/>
+  <PARAM id="sustain" value="0.7599999904632568"/>
+  <PARAM id="tilt" value="0.1519999504089355"/>
+</PARAMETERS>

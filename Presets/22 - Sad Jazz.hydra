@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="22 - Sad Jazz">
+  <PARAM id="attack" value="0.01286899484694004"/>
+  <PARAM id="cutoff" value="8298.0537109375"/>
+  <PARAM id="decay" value="0.2999999821186066"/>
+  <PARAM id="depth" value="0.6654929518699646"/>
+  <PARAM id="egrAmount" value="0.5499999523162842"/>
+  <PARAM id="envWarp" value="0.0"/>
+  <PARAM id="filterAttack" value="0.04777074232697487"/>
+  <PARAM id="filterDecay" value="0.300000011920929"/>
+  <PARAM id="filterOverload" value="0.449999988079071"/>
+  <PARAM id="filterRelease" value="0.08802735805511475"/>
+  <PARAM id="filterSustain" value="0.4159999787807465"/>
+  <PARAM id="gain" value="0.5"/>
+  <PARAM id="girth" value="0.3485915660858154"/>
+  <PARAM id="glideTime" value="0.25"/>
+  <PARAM id="harmony" value="0.5"/>
+  <PARAM id="harmonyQuantize" value="1.0"/>
+  <PARAM id="hpCutoff" value="737.7091674804688"/>
+  <PARAM id="inversion" value="3.0"/>
+  <PARAM id="kbTrack" value="0.2800000011920929"/>
+  <PARAM id="release" value="0.5545382499694824"/>
+  <PARAM id="res" value="1.927999973297119"/>
+  <PARAM id="sustain" value="0.7279999852180481"/>
+  <PARAM id="tilt" value="0.1519999504089355"/>
+</PARAMETERS>

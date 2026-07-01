@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="02 - Cloudy Bells">
+  <PARAM id="attack" value="0.008371285162866116"/>
+  <PARAM id="cutoff" value="528.3790283203125"/>
+  <PARAM id="decay" value="0.2325821369886398"/>
+  <PARAM id="depth" value="0.5528169274330139"/>
+  <PARAM id="egrAmount" value="-0.4100000262260437"/>
+  <PARAM id="envWarp" value="1.0"/>
+  <PARAM id="filterAttack" value="2.638753414154053"/>
+  <PARAM id="filterDecay" value="0.05482476204633713"/>
+  <PARAM id="filterOverload" value="0.239999994635582"/>
+  <PARAM id="filterRelease" value="2.546205520629883"/>
+  <PARAM id="filterSustain" value="0.1975999623537064"/>
+  <PARAM id="gain" value="0.6800000071525574"/>
+  <PARAM id="girth" value="0.8274648189544678"/>
+  <PARAM id="glideTime" value="0.0"/>
+  <PARAM id="harmony" value="0.75"/>
+  <PARAM id="harmonyQuantize" value="1.0"/>
+  <PARAM id="hpCutoff" value="20.0"/>
+  <PARAM id="inversion" value="5.0"/>
+  <PARAM id="kbTrack" value="0.6800000071525574"/>
+  <PARAM id="release" value="0.4160206913948059"/>
+  <PARAM id="res" value="0.6079986691474915"/>
+  <PARAM id="sustain" value="0.09360010921955109"/>
+  <PARAM id="tilt" value="-0.513599693775177"/>
+</PARAMETERS>

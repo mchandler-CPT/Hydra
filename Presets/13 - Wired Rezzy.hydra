@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="13 - Wired Rezzy">
+  <PARAM id="attack" value="0.006354060024023056"/>
+  <PARAM id="cutoff" value="11604.314453125"/>
+  <PARAM id="decay" value="0.2999999821186066"/>
+  <PARAM id="depth" value="0.4788732528686523"/>
+  <PARAM id="egrAmount" value="-0.3199999928474426"/>
+  <PARAM id="envWarp" value="-0.1359999775886536"/>
+  <PARAM id="filterAttack" value="0.09999997913837433"/>
+  <PARAM id="filterDecay" value="0.300000011920929"/>
+  <PARAM id="filterOverload" value="0.5799999833106995"/>
+  <PARAM id="filterRelease" value="0.001000000047497451"/>
+  <PARAM id="filterSustain" value="0.699999988079071"/>
+  <PARAM id="gain" value="0.4880000054836273"/>
+  <PARAM id="girth" value="0.4436619877815247"/>
+  <PARAM id="glideTime" value="0.3220000267028809"/>
+  <PARAM id="harmony" value="0.75"/>
+  <PARAM id="harmonyQuantize" value="1.0"/>
+  <PARAM id="hpCutoff" value="133.8230743408203"/>
+  <PARAM id="inversion" value="2.0"/>
+  <PARAM id="kbTrack" value="0.0"/>
+  <PARAM id="release" value="0.5000000596046448"/>
+  <PARAM id="res" value="2.599999904632568"/>
+  <PARAM id="sustain" value="0.800000011920929"/>
+  <PARAM id="tilt" value="0.3279999494552612"/>
+</PARAMETERS>

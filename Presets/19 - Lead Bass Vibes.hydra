@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="19 - Lead Bass Vibes">
+  <PARAM id="attack" value="0.006118982564657927"/>
+  <PARAM id="cutoff" value="1597.726440429688"/>
+  <PARAM id="decay" value="1.934801816940308"/>
+  <PARAM id="depth" value="0.5633803009986877"/>
+  <PARAM id="egrAmount" value="0.8199999332427979"/>
+  <PARAM id="envWarp" value="0.1999999284744263"/>
+  <PARAM id="filterAttack" value="0.06826655566692352"/>
+  <PARAM id="filterDecay" value="2.454464673995972"/>
+  <PARAM id="filterOverload" value="0.6899999976158142"/>
+  <PARAM id="filterRelease" value="0.5"/>
+  <PARAM id="filterSustain" value="0.699999988079071"/>
+  <PARAM id="gain" value="0.5080000162124634"/>
+  <PARAM id="girth" value="0.5774648189544678"/>
+  <PARAM id="glideTime" value="0.3120000064373016"/>
+  <PARAM id="harmony" value="0.4892999827861786"/>
+  <PARAM id="harmonyQuantize" value="0.0"/>
+  <PARAM id="hpCutoff" value="101.9308624267578"/>
+  <PARAM id="inversion" value="0.0"/>
+  <PARAM id="kbTrack" value="0.7599999904632568"/>
+  <PARAM id="release" value="0.009999999776482582"/>
+  <PARAM id="res" value="1.720000028610229"/>
+  <PARAM id="sustain" value="0.4760000109672546"/>
+  <PARAM id="tilt" value="0.08000004291534424"/>
+</PARAMETERS>

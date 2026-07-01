@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="03 - Bong Bass">
+  <PARAM id="attack" value="0.01286902371793985"/>
+  <PARAM id="cutoff" value="3648.015380859375"/>
+  <PARAM id="decay" value="0.4155206680297852"/>
+  <PARAM id="depth" value="0.1338028162717819"/>
+  <PARAM id="egrAmount" value="-0.2900000214576721"/>
+  <PARAM id="envWarp" value="0.5520000457763672"/>
+  <PARAM id="filterAttack" value="0.2358048856258392"/>
+  <PARAM id="filterDecay" value="0.4526059329509735"/>
+  <PARAM id="filterOverload" value="1.0"/>
+  <PARAM id="filterRelease" value="2.125723123550415"/>
+  <PARAM id="filterSustain" value="0.395999938249588"/>
+  <PARAM id="gain" value="0.4560000002384186"/>
+  <PARAM id="girth" value="0.1056337952613831"/>
+  <PARAM id="glideTime" value="0.07400000095367432"/>
+  <PARAM id="harmony" value="1.0"/>
+  <PARAM id="harmonyQuantize" value="0.0"/>
+  <PARAM id="hpCutoff" value="64.06608581542969"/>
+  <PARAM id="inversion" value="0.0"/>
+  <PARAM id="kbTrack" value="0.449999988079071"/>
+  <PARAM id="release" value="0.8703864216804504"/>
+  <PARAM id="res" value="1.704000115394592"/>
+  <PARAM id="sustain" value="0.6439999938011169"/>
+  <PARAM id="tilt" value="0.1519999504089355"/>
+</PARAMETERS>

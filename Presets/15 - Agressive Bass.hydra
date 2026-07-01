@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="15 - Agressive Bass">
+  <PARAM id="attack" value="0.001000000047497451"/>
+  <PARAM id="cutoff" value="186.2353820800781"/>
+  <PARAM id="decay" value="0.2117476612329483"/>
+  <PARAM id="depth" value="0.7781690359115601"/>
+  <PARAM id="egrAmount" value="0.6599999666213989"/>
+  <PARAM id="envWarp" value="0.0"/>
+  <PARAM id="filterAttack" value="0.001000000047497451"/>
+  <PARAM id="filterDecay" value="0.02147591114044189"/>
+  <PARAM id="filterOverload" value="1.0"/>
+  <PARAM id="filterRelease" value="0.003879423718899488"/>
+  <PARAM id="filterSustain" value="0.0"/>
+  <PARAM id="gain" value="0.5"/>
+  <PARAM id="girth" value="0.2183098793029785"/>
+  <PARAM id="glideTime" value="0.0"/>
+  <PARAM id="harmony" value="0.75"/>
+  <PARAM id="harmonyQuantize" value="1.0"/>
+  <PARAM id="hpCutoff" value="20.0"/>
+  <PARAM id="inversion" value="1.0"/>
+  <PARAM id="kbTrack" value="0.0"/>
+  <PARAM id="release" value="0.01575423777103424"/>
+  <PARAM id="res" value="1.648000001907349"/>
+  <PARAM id="sustain" value="0.05199998989701271"/>
+  <PARAM id="tilt" value="-1.0"/>
+</PARAMETERS>

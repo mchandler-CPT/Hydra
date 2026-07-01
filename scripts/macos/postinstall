@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+FACTORY_PRESETS="/Library/Application Support/dbEnergy/The Hydra/Presets"
+
+if [ ! -d "${FACTORY_PRESETS}" ]; then
+    exit 0
+fi
+
+for user_home in /Users/*; do
+    [ -d "${user_home}" ] || continue
+
+    username="$(basename "${user_home}")"
+    case "${username}" in
+        Shared | .localized | Guest) continue ;;
+    esac
+
+    if [ ! -d "${user_home}/Library" ]; then
+        continue
+    fi
+
+    dest="${user_home}/Library/Application Support/dbEnergy/The Hydra/Presets"
+    mkdir -p "${dest}"
+    /usr/bin/ditto "${FACTORY_PRESETS}/." "${dest}/"
+    /usr/bin/chown -R "${username}:staff" "${user_home}/Library/Application Support/dbEnergy"
+done
+
+exit 0

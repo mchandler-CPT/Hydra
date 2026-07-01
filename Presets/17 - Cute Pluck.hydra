@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS metaLoadedPresetName="17 - Cute Pluck">
+  <PARAM id="attack" value="0.001000000047497451"/>
+  <PARAM id="cutoff" value="2272.710205078125"/>
+  <PARAM id="decay" value="0.1150205284357071"/>
+  <PARAM id="depth" value="0.2711267471313477"/>
+  <PARAM id="egrAmount" value="0.2899999618530273"/>
+  <PARAM id="envWarp" value="0.0"/>
+  <PARAM id="filterAttack" value="0.001000000047497451"/>
+  <PARAM id="filterDecay" value="0.01451730541884899"/>
+  <PARAM id="filterOverload" value="1.0"/>
+  <PARAM id="filterRelease" value="0.001000000047497451"/>
+  <PARAM id="filterSustain" value="0.0"/>
+  <PARAM id="gain" value="1.0"/>
+  <PARAM id="girth" value="0.0"/>
+  <PARAM id="glideTime" value="0.0"/>
+  <PARAM id="harmony" value="0.75"/>
+  <PARAM id="harmonyQuantize" value="1.0"/>
+  <PARAM id="hpCutoff" value="20.0"/>
+  <PARAM id="inversion" value="5.0"/>
+  <PARAM id="kbTrack" value="0.9199999570846558"/>
+  <PARAM id="release" value="0.01783215627074242"/>
+  <PARAM id="res" value="0.0"/>
+  <PARAM id="sustain" value="0.07599999755620956"/>
+  <PARAM id="tilt" value="1.0"/>
+</PARAMETERS>
