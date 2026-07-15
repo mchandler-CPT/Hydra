@@ -229,13 +229,35 @@ jobs:
                        --sign "${INSTALLER_IDENTITY}" \
                        dist/Hydra_Installer_Signed.pkg
 
-          xcrun notarytool submit dist/Hydra_Installer_Signed.pkg \
+          # HARDENED: Capture Submission ID and query explicit verification logs if notarization bounces
+          echo "Submitting to Apple Notarization Service..."
+          if ! xcrun notarytool submit dist/Hydra_Installer_Signed.pkg \
             --apple-id "${APPLE_ID}" \
             --password "${APPLE_ID_PWD}" \
             --team-id "${TEAM_ID}" \
-            --wait
-
+            --wait > notarization_output.txt 2>&1; then
+              cat notarization_output.txt
+              SUBMISSION_ID=$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' notarization_output.txt | head -n 1 || true)
+              if [ -n "${SUBMISSION_ID}" ]; then
+                echo "Fetching Apple rejection log for Submission ID: ${SUBMISSION_ID}"
+                xcrun notarytool log "${SUBMISSION_ID}" --apple-id "${APPLE_ID}" --password "${APPLE_ID_PWD}" --team-id "${TEAM_ID}" || true
+              fi
+              exit 1
+          fi
+          cat notarization_output.txt
           xcrun stapler staple dist/Hydra_Installer_Signed.pkg
+
+      - name: Verify Signed Installer Payload (Method 1 Implementation)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== AUDIT STAGE: Inspecting Package Signing Status ==="
+          pkgutil --check-signature dist/Hydra_Installer_Signed.pkg
+          
+          echo "=== DRY-RUN: Unpacking Payload Bill-of-Materials ==="
+          pkgutil --expand-full dist/Hydra_Installer_Signed.pkg fake_install_target
+          ls -R fake_install_target/
 
       - name: Remote Plugin Validation (AU)
         if: matrix.os == 'macos-latest'
@@ -254,9 +276,6 @@ jobs:
           sudo pluginkit -a "$TARGET_DIR/Hydra.component"
           sudo killall -9 AudioComponentRegistrar || echo "Registrar not running"
           sleep 10
-
-          # CRITICAL ADJUSTMENT: Ensure your Hydra CMake subtype and manufacturer codes match here
-          # Assuming: aumu = Synth instrument, HYDR = Subtype, BDEN = Manufacturer
           sudo auval -v aumu HYDR BDEN
 
       - name: Upload macOS artifacts
